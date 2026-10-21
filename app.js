@@ -1,18 +1,29 @@
 const SUPABASE_URL = 'https://gvsizeknwxihjvqpcjgc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tSzqG168VZGmn_mTSndu1w_bNPlAR2B';
 
-// Inicialización corregida para evitar bloqueos en el navegador
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+    console.error("Error al inicializar Supabase:", e);
+}
 
 const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"];
 let contadorNombres = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
-    verificarConexion();
-    cargarSelectores();
-    cargarProductos();
-    cargarProveedoresFicha();
-    cargarCategoriasGestion();
+    // Activar solapas inmediatamente sin esperar a la base de datos
+    configurarPestanas();
+    
+    if (supabase) {
+        verificarConexion();
+        cargarSelectores();
+        cargarProductos();
+        cargarProveedoresFicha();
+        cargarCategoriasGestion();
+    } else {
+        document.getElementById("status").textContent = "Error SDK";
+    }
 
     const productForm = document.getElementById("productForm");
     if (productForm) {
@@ -39,28 +50,30 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-function cambiarPestana(pestana) {
-    const secProductos = document.getElementById("seccion-productos");
-    const secProveedores = document.getElementById("seccion-proveedores");
-    const secCategorias = document.getElementById("seccion-categorias");
+function configurarPestanas() {
+    window.cambiarPestana = function(pestana) {
+        const secProductos = document.getElementById("seccion-productos");
+        const secProveedores = document.getElementById("seccion-proveedores");
+        const secCategorias = document.getElementById("seccion-categorias");
 
-    if (secProductos) secProductos.classList.add("hidden");
-    if (secProveedores) secProveedores.classList.add("hidden");
-    if (secCategorias) secCategorias.classList.add("hidden");
+        if (secProductos) secProductos.classList.add("hidden");
+        if (secProveedores) secProveedores.classList.add("hidden");
+        if (secCategorias) secCategorias.classList.add("hidden");
 
-    const btnProductos = document.getElementById("btn-productos");
-    const btnProveedores = document.getElementById("btn-proveedores");
-    const btnCategorias = document.getElementById("btn-categorias");
+        const btnProductos = document.getElementById("btn-productos");
+        const btnProveedores = document.getElementById("btn-proveedores");
+        const btnCategorias = document.getElementById("btn-categorias");
 
-    if (btnProductos) btnProductos.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    if (btnProveedores) btnProveedores.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    if (btnCategorias) btnCategorias.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+        if (btnProductos) btnProductos.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+        if (btnProveedores) btnProveedores.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+        if (btnCategorias) btnCategorias.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
 
-    const targetSec = document.getElementById(`seccion-${pestana}`);
-    const targetBtn = document.getElementById(`btn-${pestana}`);
+        const targetSec = document.getElementById(`seccion-${pestana}`);
+        const targetBtn = document.getElementById(`btn-${pestana}`);
 
-    if (targetSec) targetSec.classList.remove("hidden");
-    if (targetBtn) targetBtn.className = "px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition";
+        if (targetSec) targetSec.classList.remove("hidden");
+        if (targetBtn) targetBtn.className = "px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition";
+    };
 }
 
 async function verificarConexion() {
@@ -72,12 +85,13 @@ async function verificarConexion() {
         statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
     } catch (err) {
         console.error("Error de conexión:", err);
-        statusEl.textContent = "Error de Conexión";
+        statusEl.textContent = "Modo Offline / Error";
         statusEl.className = "text-xs px-3 py-1 bg-rose-950 border border-rose-800 rounded text-rose-400";
     }
 }
 
 async function cargarSelectores() {
+    if (!supabase) return;
     const provSelect = document.getElementById("proveedor_select");
     if (provSelect) {
         const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
@@ -98,6 +112,7 @@ async function cargarSelectores() {
 }
 
 async function guardarProveedor() {
+    if (!supabase) return alert("Sin conexión a base de datos");
     const nombre = document.getElementById("prov_nombre").value;
     const contacto = document.getElementById("prov_contacto").value;
     const web = document.getElementById("prov_web").value;
@@ -114,6 +129,7 @@ async function guardarProveedor() {
 }
 
 async function guardarCategoria() {
+    if (!supabase) return alert("Sin conexión a base de datos");
     const nombre = document.getElementById("cat_nombre").value;
     const { error } = await supabase.from('categorias').insert([{ nombre }]);
     if (error) {
@@ -127,6 +143,7 @@ async function guardarCategoria() {
 }
 
 async function procesarNuevoProducto() {
+    if (!supabase) return alert("Sin conexión a base de datos");
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
     const categoria = document.getElementById("categoria_select").value;
@@ -177,6 +194,7 @@ async function procesarNuevoProducto() {
 }
 
 async function cargarProductos() {
+    if (!supabase) return;
     const tbody = document.getElementById("productTableBody");
     if (!tbody) return;
     
@@ -204,6 +222,7 @@ async function cargarProductos() {
 }
 
 async function cargarProveedoresFicha() {
+    if (!supabase) return;
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
 
@@ -239,6 +258,7 @@ async function cargarProveedoresFicha() {
 }
 
 async function cargarCategoriasGestion() {
+    if (!supabase) return;
     const listado = document.getElementById("categoriasListado");
     if (!listado) return;
 
