@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROWAN - Dashboard de Gestión</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SDK oficial v2 de Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
     <div class="max-w-7xl mx-auto p-4 md:p-6">
@@ -17,13 +15,14 @@
                 <p class="text-xs text-zinc-400 uppercase tracking-widest">Sistema de Gestión, Proveedores y Catálogo</p>
             </div>
             <div class="flex items-center gap-4">
-                <nav class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-800">
+                <nav class="flex flex-wrap gap-1 bg-zinc-900 p-1 rounded border border-zinc-800">
                     <button onclick="cambiarPestana('productos')" id="btn-productos" class="px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition">Catálogo</button>
                     <button onclick="cambiarPestana('proveedores')" id="btn-proveedores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Proveedores</button>
                     <button onclick="cambiarPestana('categorias')" id="btn-categorias" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Categorías</button>
+                    <button onclick="cambiarPestana('nombres')" id="btn-nombres" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Nombres</button>
                 </nav>
-                <div id="status" class="text-xs px-3 py-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-400">
-                    Conectando...
+                <div id="status" class="text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400">
+                    Sistema Local Activo
                 </div>
             </div>
         </header>
@@ -35,49 +34,37 @@
                 <form id="productForm" class="space-y-4">
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Proveedor</label>
-                        <select id="proveedor_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <select id="proveedor_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                             <!-- Dinámico -->
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor (Ej. Mochila Messi)</label>
-                        <input type="text" id="desc_proveedor" required placeholder="Ej: Mochila urbana Messi" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor</label>
+                        <input type="text" id="desc_proveedor" required placeholder="Ej: Mochila urbana 17 pulgadas" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Categoría</label>
-                        <select id="categoria_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <select id="categoria_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                             <!-- Dinámico -->
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Color / Variante</label>
-                        <input type="text" id="color" placeholder="Ej: Negro" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <input type="text" id="color" placeholder="Ej: Negro" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Prov. ($)</label>
-                            <input type="number" id="costo_prov" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                            <input type="number" id="costo_prov" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs uppercase text-zinc-400 mb-1">Packaging ($)</label>
-                            <input type="number" id="costo_pack" value="1000" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                            <input type="number" id="costo_pack" value="1000" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                         </div>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Precio de Venta Manual ($)</label>
-                        <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                    </div>
-                    <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Peso (kg)</label>
-                        <input type="number" step="0.01" id="peso" placeholder="0.65" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                    </div>
-                    <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-2">Medidas (en cm)</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="number" step="0.1" id="alto" placeholder="Alto" class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                            <input type="number" step="0.1" id="ancho" placeholder="Ancho" class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                            <input type="number" step="0.1" id="prof" placeholder="Prof." class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                        </div>
+                        <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
                     <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
                         Generar Artículo Automático
@@ -153,6 +140,29 @@
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Categorías Existentes</h2>
                 <ul id="categoriasListado" class="divide-y divide-zinc-800 text-zinc-300">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 4: NOMBRES PARA PRODUCTOS -->
+        <div id="seccion-nombres" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nuevo Nombre</h2>
+                <form id="nombreForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre (Ej: MATEO, LUCAS...)</label>
+                        <input type="text" id="nombre_nuevo" required placeholder="Ej: Mateo" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none uppercase">
+                    </div>
+                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                        Añadir a la Lista
+                    </button>
+                </form>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Listado de Nombres Disponibles</h2>
+                <p class="text-xs text-zinc-400 mb-3">El sistema irá tomando estos nombres en orden rotativo al generar cada nuevo artículo ROWAN.</p>
+                <ul id="nombresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
             </div>
