@@ -39,7 +39,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Intentar inicializar Supabase de forma segura
     try {
         if (window.supabase && typeof window.supabase.createClient === 'function') {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: { persistSession: false },
+                global: { headers: { 'x-application-name': 'rowan-dashboard' } }
+            });
             if (statusEl) {
                 statusEl.textContent = "Conectado a Supabase";
                 statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
