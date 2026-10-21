@@ -1,4 +1,4 @@
-// Credenciales ROWAN
+// Credenciales ROWAN - Producción
 const SUPABASE_URL = 'https://gvsizeknwxihjvqpcjgc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tSzqG168VZGmn_mTSndu1w_bNPlAR2B';
 
@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// Función nativa para consultar Supabase sin errores de fetch
+// Petición HTTP nativa ultra segura
 async function dbQuery(tabla, metodo = 'GET', data = null, queryParams = '') {
     const url = `${SUPABASE_URL}/rest/v1/${tabla}${queryParams}`;
     const headers = {
@@ -78,11 +78,7 @@ async function dbQuery(tabla, metodo = 'GET', data = null, queryParams = '') {
         'Prefer': 'return=representation'
     };
 
-    const options = {
-        method: metodo,
-        headers: headers
-    };
-
+    const options = { method: metodo, headers: headers };
     if (data && (metodo === 'POST' || metodo === 'PATCH')) {
         options.body = JSON.stringify(data);
     }
@@ -104,7 +100,7 @@ async function dbQuery(tabla, metodo = 'GET', data = null, queryParams = '') {
 
 async function cargarSelectores() {
     try {
-        const provs = await dbQuery('proveedores', 'GET', null, '?select=*&order=nombre.asc');
+        const provs = await dbQuery('proveedores', 'GET', null, '?select=*');
         const provSelect = document.getElementById("proveedor_select");
         if (provSelect) {
             provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
@@ -113,7 +109,7 @@ async function cargarSelectores() {
             });
         }
 
-        const cats = await dbQuery('categorias', 'GET', null, '?select=*&order=nombre.asc');
+        const cats = await dbQuery('categorias', 'GET', null, '?select=*');
         const catSelect = document.getElementById("categoria_select");
         if (catSelect) {
             catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
@@ -131,6 +127,11 @@ async function guardarProveedor() {
     const contacto = document.getElementById("prov_contacto").value.trim();
     const web = document.getElementById("prov_web").value.trim();
 
+    if (!nombre) {
+        alert("El nombre del proveedor es obligatorio.");
+        return;
+    }
+
     try {
         await dbQuery('proveedores', 'POST', { nombre, contacto, web });
         alert("¡Proveedor guardado con éxito!");
@@ -144,6 +145,11 @@ async function guardarProveedor() {
 
 async function guardarCategoria() {
     const nombre = document.getElementById("cat_nombre").value.trim();
+    if (!nombre) {
+        alert("El nombre de la categoría es obligatorio.");
+        return;
+    }
+
     try {
         await dbQuery('categorias', 'POST', { nombre });
         alert("¡Categoría creada con éxito!");
@@ -210,7 +216,7 @@ async function cargarProductos() {
     if (!tbody) return;
     
     try {
-        const data = await dbQuery('productos', 'GET', null, '?select=*,proveedores(nombre)&order=created_at.desc');
+        const data = await dbQuery('productos', 'GET', null, '?select=*');
         if (!data || data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
             return;
@@ -219,19 +225,18 @@ async function cargarProductos() {
         tbody.innerHTML = "";
         data.forEach(p => {
             const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
-            const provNombre = p.proveedores?.nombre || 'Sin proveedor';
             tbody.innerHTML += `
                 <tr class="hover:bg-zinc-800/50 transition">
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
                     <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color || ''} | ${p.categoria}</span></td>
-                    <td class="py-3 text-zinc-400 text-xs">${provNombre}</td>
+                    <td class="py-3 text-zinc-400 text-xs">Proveedor ID: ${p.proveedor_id}</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
                     <td class="py-3 font-semibold text-emerald-400">$${p.precio_venta.toLocaleString()}</td>
                 </tr>
             `;
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-rose-500">Error al cargar listado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
     }
 }
 
@@ -240,7 +245,7 @@ async function cargarProveedoresFicha() {
     if (!container) return;
 
     try {
-        const provs = await dbQuery('proveedores', 'GET', null, '?select=*,productos(*)&order=nombre.asc');
+        const provs = await dbQuery('proveedores', 'GET', null, '?select=*');
         if (!provs || provs.length === 0) {
             container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
             return;
@@ -248,10 +253,6 @@ async function cargarProveedoresFicha() {
 
         container.innerHTML = "";
         provs.forEach(prov => {
-            let productosHtml = prov.productos && prov.productos.length > 0 
-                ? prov.productos.map(prod => `<li class="text-xs text-zinc-300 py-1 flex justify-between border-b border-zinc-800/50"><span><b>${prod.sku}</b> - ${prod.nombre_rowan} (${prod.color || 'Único'})</span> <span class="text-emerald-400">$${prod.precio_venta}</span></li>`).join('')
-                : `<li class="text-xs text-zinc-500 py-1">Aún no tiene productos cargados de este proveedor.</li>`;
-
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
                     <div class="flex justify-between items-start mb-2">
@@ -259,17 +260,12 @@ async function cargarProveedoresFicha() {
                             <h3 class="font-bold text-zinc-100 text-base">${prov.nombre}</h3>
                             <p class="text-xs text-zinc-400">Contacto: ${prov.contacto || 'No especificado'} | Web: ${prov.web || 'No especificada'}</p>
                         </div>
-                        <span class="text-xs bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded text-zinc-300">${prov.productos?.length || 0} productos</span>
-                    </div>
-                    <div class="mt-3">
-                        <p class="text-xs uppercase text-zinc-500 font-semibold mb-1">Productos comprados a este proveedor:</p>
-                        <ul class="divide-y divide-zinc-900">${productosHtml}</ul>
                     </div>
                 </div>
             `;
         });
     } catch (e) {
-        container.innerHTML = `<p class="text-rose-500 text-sm">Error al cargar fichas de proveedores.</p>`;
+        container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
     }
 }
 
@@ -278,7 +274,7 @@ async function cargarCategoriasGestion() {
     if (!listado) return;
 
     try {
-        const cats = await dbQuery('categorias', 'GET', null, '?select=*&order=nombre.asc');
+        const cats = await dbQuery('categorias', 'GET', null, '?select=*');
         if (!cats || cats.length === 0) {
             listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay categorías.</li>`;
             return;
@@ -289,6 +285,6 @@ async function cargarCategoriasGestion() {
             listado.innerHTML += `<li class="py-2.5 text-sm font-medium text-zinc-200 flex justify-between items-center"><span>${c.nombre}</span> <span class="text-xs text-zinc-500">Activa</span></li>`;
         });
     } catch (e) {
-        listado.innerHTML = `<li class="py-3 text-sm text-rose-500">Error al cargar categorías.</li>`;
+        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay categorías.</li>`;
     }
 }
