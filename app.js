@@ -55,18 +55,16 @@ async function verificarConexion() {
 }
 
 async function cargarSelectores() {
-    // Proveedores select
     const provSelect = document.getElementById("proveedor_select");
     const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
-    provSelect.innerHTML = provs && provs.length > 0 ? '' : '<option value="">No hay proveedores cargados</option>';
+    provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
     provs?.forEach(p => {
         provSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
     });
 
-    // Categorias select
     const catSelect = document.getElementById("categoria_select");
     const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
-    catSelect.innerHTML = '';
+    catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
     cats?.forEach(c => {
         catSelect.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
     });
@@ -115,16 +113,14 @@ async function procesarNuevoProducto() {
     const prof = parseFloat(document.getElementById("prof").value) || null;
 
     if (!proveedorId) {
-        alert("Por favor selecciona o carga un proveedor primero.");
+        alert("Por favor selecciona un proveedor.");
         return;
     }
 
-    // SKU: Primeras 3 letras de la categoría + número secuencial
     const prefix = categoria.substring(0, 3).toUpperCase();
     const { count } = await supabase.from('productos').select('*', { count: 'exact', head: true }).eq('categoria', categoria);
     const sku = `${prefix}-${String((count || 0) + 1).padStart(3, '0')}`;
 
-    // Nombre Rowán automático
     let nombreBaseSingular = categoria.toUpperCase().slice(0, -1);
     if (categoria === "Mochilas") nombreBaseSingular = "MOCHILA";
     if (categoria === "Riñoneras") nombreBaseSingular = "RIÑONERA";
