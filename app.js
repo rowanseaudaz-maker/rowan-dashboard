@@ -1,6 +1,8 @@
 const SUPABASE_URL = 'https://gvsizeknwxihjvqpcjgc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tSzqG168VZGmn_mTSndu1w_bNPlAR2B';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Inicialización corregida para evitar bloqueos en el navegador
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"];
 let contadorNombres = 0;
@@ -12,43 +14,64 @@ document.addEventListener("DOMContentLoaded", () => {
     cargarProveedoresFicha();
     cargarCategoriasGestion();
 
-    document.getElementById("productForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        await procesarNuevoProducto();
-    });
+    const productForm = document.getElementById("productForm");
+    if (productForm) {
+        productForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await procesarNuevoProducto();
+        });
+    }
 
-    document.getElementById("proveedorForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        await guardarProveedor();
-    });
+    const proveedorForm = document.getElementById("proveedorForm");
+    if (proveedorForm) {
+        proveedorForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await guardarProveedor();
+        });
+    }
 
-    document.getElementById("categoriaForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        await guardarCategoria();
-    });
+    const categoriaForm = document.getElementById("categoriaForm");
+    if (categoriaForm) {
+        categoriaForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await guardarCategoria();
+        });
+    }
 });
 
 function cambiarPestana(pestana) {
-    document.getElementById("seccion-productos").classList.add("hidden");
-    document.getElementById("seccion-proveedores").classList.add("hidden");
-    document.getElementById("seccion-categorias").classList.add("hidden");
+    const secProductos = document.getElementById("seccion-productos");
+    const secProveedores = document.getElementById("seccion-proveedores");
+    const secCategorias = document.getElementById("seccion-categorias");
 
-    document.getElementById("btn-productos").className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    document.getElementById("btn-proveedores").className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    document.getElementById("btn-categorias").className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+    if (secProductos) secProductos.classList.add("hidden");
+    if (secProveedores) secProveedores.classList.add("hidden");
+    if (secCategorias) secCategorias.classList.add("hidden");
 
-    document.getElementById(`seccion-${pestana}`).classList.remove("hidden");
-    document.getElementById(`btn-${pestana}`).className = "px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition";
+    const btnProductos = document.getElementById("btn-productos");
+    const btnProveedores = document.getElementById("btn-proveedores");
+    const btnCategorias = document.getElementById("btn-categorias");
+
+    if (btnProductos) btnProductos.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+    if (btnProveedores) btnProveedores.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+    if (btnCategorias) btnCategorias.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+
+    const targetSec = document.getElementById(`seccion-${pestana}`);
+    const targetBtn = document.getElementById(`btn-${pestana}`);
+
+    if (targetSec) targetSec.classList.remove("hidden");
+    if (targetBtn) targetBtn.className = "px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition";
 }
 
 async function verificarConexion() {
     const statusEl = document.getElementById("status");
     try {
-        const { error } = await supabase.from('productos').select('id').limit(1);
+        const { error } = await supabase.from('categorias').select('*').limit(1);
         if (error) throw error;
         statusEl.textContent = "Conectado a Supabase";
         statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
     } catch (err) {
+        console.error("Error de conexión:", err);
         statusEl.textContent = "Error de Conexión";
         statusEl.className = "text-xs px-3 py-1 bg-rose-950 border border-rose-800 rounded text-rose-400";
     }
@@ -56,18 +79,22 @@ async function verificarConexion() {
 
 async function cargarSelectores() {
     const provSelect = document.getElementById("proveedor_select");
-    const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
-    provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
-    provs?.forEach(p => {
-        provSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
-    });
+    if (provSelect) {
+        const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
+        provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
+        provs?.forEach(p => {
+            provSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+        });
+    }
 
     const catSelect = document.getElementById("categoria_select");
-    const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
-    catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
-    cats?.forEach(c => {
-        catSelect.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
-    });
+    if (catSelect) {
+        const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
+        catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
+        cats?.forEach(c => {
+            catSelect.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+        });
+    }
 }
 
 async function guardarProveedor() {
@@ -151,6 +178,8 @@ async function procesarNuevoProducto() {
 
 async function cargarProductos() {
     const tbody = document.getElementById("productTableBody");
+    if (!tbody) return;
+    
     const { data, error } = await supabase.from('productos').select('*, proveedores(nombre)').order('created_at', { ascending: false });
 
     if (error || !data || data.length === 0) {
@@ -176,6 +205,8 @@ async function cargarProductos() {
 
 async function cargarProveedoresFicha() {
     const container = document.getElementById("proveedoresListado");
+    if (!container) return;
+
     const { data: provs } = await supabase.from('proveedores').select('*, productos(*)').order('nombre');
 
     if (!provs || provs.length === 0) {
@@ -209,6 +240,8 @@ async function cargarProveedoresFicha() {
 
 async function cargarCategoriasGestion() {
     const listado = document.getElementById("categoriasListado");
+    if (!listado) return;
+
     const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
 
     if (!cats || cats.length === 0) {
