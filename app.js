@@ -1,14 +1,15 @@
-// Configuración de Credenciales
 const SUPABASE_URL = 'https://gvsizeknwxihjvqpcjgc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tSzqG168VZGmn_mTSndu1w_bNPlAR2B';
 
-let supabaseClient = null;
+// Inicialización limpia compatible con el SDK v2 de Supabase
+const { createClient } = window.supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false }
+});
 
-// Nombres para generación automática
 const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"];
 let contadorNombres = 0;
 
-// 1. ACTIVAR LA NAVEGACIÓN DE INMEDIATO (Independiente de la base de datos)
 window.cambiarPestana = function(pestana) {
     const secProductos = document.getElementById("seccion-productos");
     const secProveedores = document.getElementById("seccion-proveedores");
@@ -35,35 +36,16 @@ window.cambiarPestana = function(pestana) {
 
 document.addEventListener("DOMContentLoaded", () => {
     const statusEl = document.getElementById("status");
-    
-    // Intentar inicializar Supabase de forma segura
-    try {
-        if (window.supabase && typeof window.supabase.createClient === 'function') {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                auth: { persistSession: false },
-                global: { headers: { 'x-application-name': 'rowan-dashboard' } }
-            });
-            if (statusEl) {
-                statusEl.textContent = "Conectado a Supabase";
-                statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
-            }
-            // Cargar datos si hay conexión
-            cargarSelectores();
-            cargarProductos();
-            cargarProveedoresFicha();
-            cargarCategoriasGestion();
-        } else {
-            throw new Error("Librería SDK no disponible");
-        }
-    } catch (err) {
-        console.error("Error al conectar con Supabase:", err);
-        if (statusEl) {
-            statusEl.textContent = "Modo Local / Sin Conexión";
-            statusEl.className = "text-xs px-3 py-1 bg-rose-950 border border-rose-800 rounded text-rose-400";
-        }
+    if (statusEl) {
+        statusEl.textContent = "Conectado a Supabase";
+        statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
     }
 
-    // Eventos de Formularios
+    cargarSelectores();
+    cargarProductos();
+    cargarProveedoresFicha();
+    cargarCategoriasGestion();
+
     const productForm = document.getElementById("productForm");
     if (productForm) {
         productForm.addEventListener("submit", async (e) => {
@@ -90,7 +72,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function cargarSelectores() {
-    if (!supabaseClient) return;
     try {
         const provSelect = document.getElementById("proveedor_select");
         if (provSelect) {
@@ -115,7 +96,6 @@ async function cargarSelectores() {
 }
 
 async function guardarProveedor() {
-    if (!supabaseClient) return alert("Sin conexión a la base de datos");
     const nombre = document.getElementById("prov_nombre").value;
     const contacto = document.getElementById("prov_contacto").value;
     const web = document.getElementById("prov_web").value;
@@ -132,7 +112,6 @@ async function guardarProveedor() {
 }
 
 async function guardarCategoria() {
-    if (!supabaseClient) return alert("Sin conexión a la base de datos");
     const nombre = document.getElementById("cat_nombre").value;
     const { error } = await supabaseClient.from('categorias').insert([{ nombre }]);
     if (error) {
@@ -146,7 +125,6 @@ async function guardarCategoria() {
 }
 
 async function procesarNuevoProducto() {
-    if (!supabaseClient) return alert("Sin conexión a la base de datos");
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
     const categoria = document.getElementById("categoria_select").value;
@@ -197,7 +175,6 @@ async function procesarNuevoProducto() {
 }
 
 async function cargarProductos() {
-    if (!supabaseClient) return;
     const tbody = document.getElementById("productTableBody");
     if (!tbody) return;
     
@@ -225,7 +202,6 @@ async function cargarProductos() {
 }
 
 async function cargarProveedoresFicha() {
-    if (!supabaseClient) return;
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
 
@@ -261,7 +237,6 @@ async function cargarProveedoresFicha() {
 }
 
 async function cargarCategoriasGestion() {
-    if (!supabaseClient) return;
     const listado = document.getElementById("categoriasListado");
     if (!listado) return;
 
