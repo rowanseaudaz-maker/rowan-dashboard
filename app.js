@@ -1,25 +1,38 @@
-// Sistema ROWAN - Almacenamiento Local Estable (Sin bloqueos de red)
+// Sistema ROWAN - Almacenamiento Local Avanzado con Gestión de Nombres y Costos Editables
 
-const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"];
-let contadorNombres = 0;
+// Inicializar datos por defecto si está vacío
+if (!localStorage.getItem('rowan_categorias')) {
+    localStorage.setItem('rowan_categorias', JSON.stringify([
+        { id: '1', nombre: 'Mochilas' },
+        { id: '2', nombre: 'Riñoneras' },
+        { id: '3', nombre: 'Neceres' },
+        { id: '4', nombre: 'Relojes' },
+        { id: '5', nombre: 'Cintos' },
+        { id: '6', nombre: 'Tote Bags' }
+    ]));
+}
+if (!localStorage.getItem('rowan_proveedores')) {
+    localStorage.setItem('rowan_proveedores', JSON.stringify([]));
+}
+if (!localStorage.getItem('rowan_productos')) {
+    localStorage.setItem('rowan_productos', JSON.stringify([]));
+}
+if (!localStorage.getItem('rowan_nombres')) {
+    // Nombres iniciales por defecto que luego puedes editar en su solapa
+    localStorage.setItem('rowan_nombres', JSON.stringify([
+        "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"
+    ]));
+}
 
-// Navegación inmediata de solapas
+// Navegación inmediata de solapas (Incluye la nueva solapa "nombres")
 window.cambiarPestana = function(pestana) {
-    const secProductos = document.getElementById("seccion-productos");
-    const secProveedores = document.getElementById("seccion-proveedores");
-    const secCategorias = document.getElementById("seccion-categorias");
-
-    if (secProductos) secProductos.classList.add("hidden");
-    if (secProveedores) secProveedores.classList.add("hidden");
-    if (secCategorias) secCategorias.classList.add("hidden");
-
-    const btnProductos = document.getElementById("btn-productos");
-    const btnProveedores = document.getElementById("btn-proveedores");
-    const btnCategorias = document.getElementById("btn-categorias");
-
-    if (btnProductos) btnProductos.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    if (btnProveedores) btnProveedores.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
-    if (btnCategorias) btnCategorias.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+    const secciones = ["productos", "proveedores", "categorias", "nombres"];
+    secciones.forEach(sec => {
+        const el = document.getElementById(`seccion-${sec}`);
+        if (el) el.classList.add("hidden");
+        const btn = document.getElementById(`btn-${sec}`);
+        if (btn) btn.className = "px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition";
+    });
 
     const targetSec = document.getElementById(`seccion-${pestana}`);
     const targetBtn = document.getElementById(`btn-${pestana}`);
@@ -35,27 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
         statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
     }
 
-    // Inicializar datos por defecto si está vacío
-    if (!localStorage.getItem('rowan_categorias')) {
-        localStorage.setItem('rowan_categorias', JSON.stringify([
-            { id: '1', nombre: 'Mochilas' },
-            { id: '2', nombre: 'Riñoneras' },
-            { id: '3', nombre: 'Neceres' },
-            { id: '4', nombre: 'Relojes' },
-            { id: '5', nombre: 'Cintos' }
-        ]));
-    }
-    if (!localStorage.getItem('rowan_proveedores')) {
-        localStorage.setItem('rowan_proveedores', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('rowan_productos')) {
-        localStorage.setItem('rowan_productos', JSON.stringify([]));
-    }
-
     cargarSelectores();
     cargarProductos();
     cargarProveedoresFicha();
     cargarCategoriasGestion();
+    cargarNombresGestion();
 
     // Formularios
     const productForm = document.getElementById("productForm");
@@ -79,6 +76,14 @@ document.addEventListener("DOMContentLoaded", () => {
         categoriaForm.addEventListener("submit", (e) => {
             e.preventDefault();
             guardarCategoria();
+        });
+    }
+
+    const nombreForm = document.getElementById("nombreForm");
+    if (nombreForm) {
+        nombreForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            guardarNombreNuevo();
         });
     }
 });
@@ -157,6 +162,63 @@ function guardarCategoria() {
     }
 }
 
+function guardarNombreNuevo() {
+    const inputNombre = document.getElementById("nombre_nuevo").value.trim().toUpperCase();
+    if (!inputNombre) return;
+
+    try {
+        let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+        if (nombres.includes(inputNombre)) {
+            alert("Este nombre ya está en la lista.");
+            return;
+        }
+        nombres.push(inputNombre);
+        localStorage.setItem('rowan_nombres', JSON.stringify(nombres));
+        document.getElementById("nombreForm").reset();
+        cargarNombresGestion();
+        alert("¡Nombre agregado con éxito!");
+    } catch (e) {
+        alert("Error al guardar nombre.");
+    }
+}
+
+window.eliminarNombre = function(index) {
+    try {
+        let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+        nombres.splice(index, 1);
+        if (nombres.length === 0) nombres = ["ROWAN"]; // Evitar lista vacía
+        localStorage.setItem('rowan_nombres', JSON.stringify(nombres));
+        cargarNombresGestion();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function cargarNombresGestion() {
+    const listado = document.getElementById("nombresListado");
+    if (!listado) return;
+
+    try {
+        const nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+        if (nombres.length === 0) {
+            listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay nombres cargados.</li>`;
+            return;
+        }
+
+        listado.innerHTML = "";
+        nombres.forEach((nom, index) => {
+            listado.innerHTML += `
+                <li class="py-2.5 text-sm font-medium text-zinc-200 flex justify-between items-center border-b border-zinc-800/50">
+                    <span>${index + 1}. ${nom}</span>
+                    <button onclick="eliminarNombre(${index})" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
+                </li>
+            `;
+        });
+    } catch (e) {
+        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">Error al cargar nombres.</li>`;
+    }
+}
+
 function procesarNuevoProducto() {
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
@@ -187,12 +249,20 @@ function procesarNuevoProducto() {
         if (categoria === "Neceres") nombreBaseSingular = "NECESER";
         if (categoria === "Relojes") nombreBaseSingular = "RELOJ";
         if (categoria === "Cintos") nombreBaseSingular = "CINTO";
+        if (categoria === "Tote Bags") nombreBaseSingular = "TOTE BAG";
 
-        const nombreHombre = nombresHombres[contadorNombres % nombresHombres.length];
-        contadorNombres++;
-        const nombreRowan = `${nombreBaseSingular} ${nombreHombre}`;
+        // Tomar el siguiente nombre de la solapa de Nombres configurable
+        let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || ["ROWAN"];
+        let indiceContador = parseInt(localStorage.getItem('rowan_indice_nombre') || '0', 10);
+        const nombreElegido = nombres[indiceContador % nombres.length];
+        
+        // Incrementar y guardar el índice para el próximo producto
+        localStorage.setItem('rowan_indice_nombre', (indiceContador + 1).toString());
+
+        const nombreRowan = `${nombreBaseSingular} ${nombreElegido}`;
 
         const nuevoProd = {
+            id: 'prod_' + Date.now(),
             sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
             proveedor_id: proveedorId, color, costo_proveedor: costoProv, costo_packaging: costoPack,
             precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
@@ -207,6 +277,25 @@ function procesarNuevoProducto() {
         cargarProveedoresFicha();
     } catch (err) {
         alert("Error al guardar producto: " + err.message);
+    }
+}
+
+// Función para actualizar el costo directamente desde la ficha de proveedor
+window.actualizarCostoProducto = function(prodId, nuevoCosto) {
+    const costoNum = parseFloat(nuevoCosto);
+    if (isNaN(costoNum) || costoNum < 0) return;
+
+    try {
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const prod = productos.find(p => p.id === prodId);
+        if (prod) {
+            prod.costo_proveedor = costoNum;
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            cargarProductos();
+            // Recargar sin perder la posición para actualizar totales visuales
+        }
+    } catch (e) {
+        console.error("Error al actualizar costo", e);
     }
 }
 
@@ -261,7 +350,21 @@ function cargarProveedoresFicha() {
         provs.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
             let productosHtml = prodsProv.length > 0 
-                ? prodsProv.map(prod => `<li class="text-xs text-zinc-300 py-1 flex justify-between border-b border-zinc-800/50"><span><b>${prod.sku}</b> - ${prod.nombre_rowan} (${prod.color || 'Único'})</span> <span class="text-emerald-400">$${prod.precio_venta}</span></li>`).join('')
+                ? prodsProv.map(prod => `
+                    <li class="text-xs text-zinc-300 py-2 border-b border-zinc-800/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+                        <div>
+                            <span class="font-bold text-zinc-200">${prod.sku}</span> - <span class="text-zinc-100">${prod.nombre_rowan}</span> (${prod.color || 'Único'})
+                            <span class="block text-[11px] text-zinc-400">Desc. Proveedor: ${prod.descripcion_proveedor}</span>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                            <div class="flex items-center gap-1">
+                                <span class="text-zinc-400 text-[11px]">Costo: $</span>
+                                <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
+                            </div>
+                            <span class="text-xs text-zinc-400">Venta: <b class="text-emerald-400">$${prod.precio_venta}</b></span>
+                        </div>
+                    </li>
+                `).join('')
                 : `<li class="text-xs text-zinc-500 py-1">Aún no tiene productos cargados de este proveedor.</li>`;
 
             container.innerHTML += `
@@ -274,7 +377,7 @@ function cargarProveedoresFicha() {
                         <span class="text-xs bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded text-zinc-300">${prodsProv.length} productos</span>
                     </div>
                     <div class="mt-3">
-                        <p class="text-xs uppercase text-zinc-500 font-semibold mb-1">Productos comprados a este proveedor:</p>
+                        <p class="text-xs uppercase text-zinc-500 font-semibold mb-1">Listado de productos comprados:</p>
                         <ul class="divide-y divide-zinc-900">${productosHtml}</ul>
                     </div>
                 </div>
