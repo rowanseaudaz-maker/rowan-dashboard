@@ -12,16 +12,17 @@ const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA",
 let contadorNombres = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Activar solapas de navegación de inmediato sin esperar bloqueos
+    // 1. Forzar que las solapas funcionen siempre de inmediato
     configurarPestanas();
     
-    // Marcar visualmente como listo para operar
+    // 2. Estado visual listo
     const statusEl = document.getElementById("status");
     if (statusEl) {
         statusEl.textContent = "Sistema Listo";
         statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
     }
 
+    // 3. Cargar datos de Supabase de forma segura si está disponible
     if (supabase) {
         cargarSelectores();
         cargarProductos();
@@ -29,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
         cargarCategoriasGestion();
     }
 
+    // Event listeners de formularios
     const productForm = document.getElementById("productForm");
     if (productForm) {
         productForm.addEventListener("submit", async (e) => {
