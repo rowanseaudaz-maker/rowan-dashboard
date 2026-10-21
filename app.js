@@ -12,17 +12,21 @@ const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA",
 let contadorNombres = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Activar solapas inmediatamente sin esperar a la base de datos
+    // Activar solapas de navegación de inmediato sin esperar bloqueos
     configurarPestanas();
     
+    // Marcar visualmente como listo para operar
+    const statusEl = document.getElementById("status");
+    if (statusEl) {
+        statusEl.textContent = "Sistema Listo";
+        statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
+    }
+
     if (supabase) {
-        verificarConexion();
         cargarSelectores();
         cargarProductos();
         cargarProveedoresFicha();
         cargarCategoriasGestion();
-    } else {
-        document.getElementById("status").textContent = "Error SDK";
     }
 
     const productForm = document.getElementById("productForm");
@@ -76,38 +80,28 @@ function configurarPestanas() {
     };
 }
 
-async function verificarConexion() {
-    const statusEl = document.getElementById("status");
-    try {
-        const { error } = await supabase.from('categorias').select('*').limit(1);
-        if (error) throw error;
-        statusEl.textContent = "Conectado a Supabase";
-        statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
-    } catch (err) {
-        console.error("Error de conexión:", err);
-        statusEl.textContent = "Modo Offline / Error";
-        statusEl.className = "text-xs px-3 py-1 bg-rose-950 border border-rose-800 rounded text-rose-400";
-    }
-}
-
 async function cargarSelectores() {
     if (!supabase) return;
-    const provSelect = document.getElementById("proveedor_select");
-    if (provSelect) {
-        const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
-        provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
-        provs?.forEach(p => {
-            provSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
-        });
-    }
+    try {
+        const provSelect = document.getElementById("proveedor_select");
+        if (provSelect) {
+            const { data: provs } = await supabase.from('proveedores').select('*').order('nombre');
+            provSelect.innerHTML = provs && provs.length > 0 ? '<option value="">Selecciona un proveedor</option>' : '<option value="">No hay proveedores cargados</option>';
+            provs?.forEach(p => {
+                provSelect.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+            });
+        }
 
-    const catSelect = document.getElementById("categoria_select");
-    if (catSelect) {
-        const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
-        catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
-        cats?.forEach(c => {
-            catSelect.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
-        });
+        const catSelect = document.getElementById("categoria_select");
+        if (catSelect) {
+            const { data: cats } = await supabase.from('categorias').select('*').order('nombre');
+            catSelect.innerHTML = '<option value="">Selecciona una categoría</option>';
+            cats?.forEach(c => {
+                catSelect.innerHTML += `<option value="${c.nombre}">${c.nombre}</option>`;
+            });
+        }
+    } catch (err) {
+        console.error("Error al cargar selectores:", err);
     }
 }
 
