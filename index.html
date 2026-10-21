@@ -4,48 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROWAN - Dashboard de Gestión</title>
-    <!-- Tailwind CSS para diseño moderno y minimalista -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SDK de Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
-    <div class="max-w-6xl mx-auto p-6">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
         <!-- Header -->
-        <header class="flex justify-between items-center border-b border-zinc-800 pb-6 mb-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-6 mb-8 gap-4">
             <div>
                 <h1 class="text-2xl font-bold tracking-wider">ROWAN</h1>
-                <p class="text-xs text-zinc-400 uppercase tracking-widest">Sistema de Gestión y Proveedores</p>
+                <p class="text-xs text-zinc-400 uppercase tracking-widest">Sistema de Gestión, Proveedores y Catálogo</p>
             </div>
-            <div id="status" class="text-xs px-3 py-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-400">
-                Conectando a Base de Datos...
+            <div class="flex items-center gap-4">
+                <nav class="flex gap-2 bg-zinc-900 p-1 rounded border border-zinc-800">
+                    <button onclick="cambiarPestana('productos')" id="btn-productos" class="px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition">Catálogo</button>
+                    <button onclick="cambiarPestana('proveedores')" id="btn-proveedores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Proveedores</button>
+                    <button onclick="cambiarPestana('categorias')" id="btn-categorias" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Categorías</button>
+                </nav>
+                <div id="status" class="text-xs px-3 py-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-400">
+                    Conectando...
+                </div>
             </div>
         </header>
 
-        <!-- Grid Principal -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            <!-- Formulario de Carga (Módulo Proveedores) -->
+        <!-- SECCIÓN 1: PRODUCTOS Y CARGA -->
+        <div id="seccion-productos" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulario de Carga -->
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
-                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Carga de Proveedor</h2>
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Cargar Producto de Proveedor</h2>
                 <form id="productForm" class="space-y-4">
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Proveedor</label>
-                        <input type="text" id="proveedor" required placeholder="Ej: Spartan / Marroquinería" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <select id="proveedor_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                            <!-- Se carga dinámicamente -->
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor</label>
-                        <input type="text" id="desc_proveedor" required placeholder="Ej: Mochila Messi" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor (Ej. Mochila Messi)</label>
+                        <input type="text" id="desc_proveedor" required placeholder="Ej: Mochila urbana Messi" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Categoría</label>
-                        <select id="categoria" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                            <option value="Mochilas">Mochilas</option>
-                            <option value="Riñoneras">Riñoneras</option>
-                            <option value="Neceres">Neceres</option>
-                            <option value="Relojes">Relojes</option>
-                            <option value="Cintos">Cintos</option>
-                            <option value="Tote Bags">Tote Bags</option>
+                        <select id="categoria_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                            <!-- Se carga dinámicamente -->
                         </select>
                     </div>
                     <div>
@@ -54,11 +55,11 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Proveedor ($)</label>
+                            <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Prov. ($)</label>
                             <input type="number" id="costo_prov" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
                         </div>
                         <div>
-                            <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Packaging ($)</label>
+                            <label class="block text-xs uppercase text-zinc-400 mb-1">Packaging ($)</label>
                             <input type="number" id="costo_pack" value="1000" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
                         </div>
                     </div>
@@ -66,47 +67,99 @@
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Precio de Venta Manual ($)</label>
                         <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-xs uppercase text-zinc-400 mb-1">Peso (kg)</label>
-                            <input type="number" step="0.01" id="peso" placeholder="0.65" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                        </div>
-                        <div>
-                            <label class="block text-xs uppercase text-zinc-400 mb-1">Medidas</label>
-                            <input type="text" id="medidas" placeholder="40x30x15 cm" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Peso (kg)</label>
+                        <input type="number" step="0.01" id="peso" placeholder="0.65" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-2">Medidas (en cm)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" step="0.1" id="alto" placeholder="Alto" class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <input type="number" step="0.1" id="ancho" placeholder="Ancho" class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <input type="number" step="0.1" id="prof" placeholder="Prof." class="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                         </div>
                     </div>
-                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2 rounded text-sm hover:bg-zinc-200 transition">
-                        Generar y Guardar Artículo
+                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                        Generar Artículo Automático
                     </button>
                 </form>
             </div>
 
-            <!-- Listado de Artículos Generados -->
+            <!-- Listado de Catálogo -->
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-2">
-                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Catálogo y Artículos ROWAN</h2>
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Catálogo de Artículos ROWAN</h2>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="border-b border-zinc-800 text-zinc-400 uppercase text-xs">
                             <tr>
                                 <th class="pb-3">SKU</th>
                                 <th class="pb-3">Artículo ROWAN</th>
-                                <th class="pb-3">Categoría</th>
+                                <th class="pb-3">Proveedor</th>
                                 <th class="pb-3">Costo Real</th>
                                 <th class="pb-3">Precio Venta</th>
                             </tr>
                         </thead>
                         <tbody id="productTableBody" class="divide-y divide-zinc-800 text-zinc-300">
-                            <!-- Los productos se cargarán dinámicamente -->
+                            <!-- Dinámico -->
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
 
+        <!-- SECCIÓN 2: PROVEEDORES Y SUS FICHAS -->
+        <div id="seccion-proveedores" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Nuevo Proveedor</h2>
+                <form id="proveedorForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre Comercial</label>
+                        <input type="text" id="prov_nombre" required placeholder="Ej: Spartan" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Contacto / WhatsApp</label>
+                        <input type="text" id="prov_contacto" placeholder="Ej: +54 9 11..." class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Web / Redes</label>
+                        <input type="text" id="prov_web" placeholder="Ej: webproveedor.com" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                        Guardar Proveedor
+                    </button>
+                </form>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-2">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Fichas de Proveedores y Sus Productos</h2>
+                <div id="proveedoresListado" class="space-y-6">
+                    <!-- Dinámico -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 3: GESTIÓN DE CATEGORÍAS -->
+        <div id="seccion-categorias" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nueva Categoría</h2>
+                <form id="categoriaForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre de la Categoría</label>
+                        <input type="text" id="cat_nombre" required placeholder="Ej: Billeteras, Mochilas..." class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                        Crear Categoría
+                    </button>
+                </form>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Categorías Existentes</h2>
+                <ul id="categoriasListado" class="divide-y divide-zinc-800 text-zinc-300">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
         </div>
     </div>
 
-    <!-- Script de lógica y conexión con Supabase -->
     <script src="app.js"></script>
 </body>
 </html>
