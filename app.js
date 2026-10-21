@@ -1,4 +1,4 @@
-// Configuración de Credenciales ROWAN
+// Credenciales ROWAN
 const SUPABASE_URL = 'https://gvsizeknwxihjvqpcjgc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tSzqG168VZGmn_mTSndu1w_bNPlAR2B';
 
@@ -7,7 +7,7 @@ let supabaseClient = null;
 const nombresHombres = ["DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"];
 let contadorNombres = 0;
 
-// NAVEGACIÓN INMEDIATA
+// Navegación de solapas inmediata
 window.cambiarPestana = function(pestana) {
     const secProductos = document.getElementById("seccion-productos");
     const secProveedores = document.getElementById("seccion-proveedores");
@@ -34,22 +34,15 @@ window.cambiarPestana = function(pestana) {
 
 document.addEventListener("DOMContentLoaded", () => {
     const statusEl = document.getElementById("status");
-    
+
     try {
+        // Inicialización segura desde la librería global del navegador
         if (window.supabase && typeof window.supabase.createClient === 'function') {
-            // Inicialización con headers globales para evitar bloqueos de red (Failed to fetch)
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-                auth: { persistSession: false },
-                global: {
-                    headers: { 'x-application-name': 'rowan-dashboard' },
-                },
-            });
-            
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             if (statusEl) {
                 statusEl.textContent = "Conectado a Supabase";
                 statusEl.className = "text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400";
             }
-            
             cargarSelectores();
             cargarProductos();
             cargarProveedoresFicha();
@@ -58,13 +51,14 @@ document.addEventListener("DOMContentLoaded", () => {
             throw new Error("SDK no cargado");
         }
     } catch (err) {
-        console.error("Error al iniciar cliente:", err);
+        console.error("Error al conectar:", err);
         if (statusEl) {
-            statusEl.textContent = "Modo Local";
+            statusEl.textContent = "Error de Conexión";
             statusEl.className = "text-xs px-3 py-1 bg-rose-950 border border-rose-800 rounded text-rose-400";
         }
     }
 
+    // Formularios
     const productForm = document.getElementById("productForm");
     if (productForm) {
         productForm.addEventListener("submit", async (e) => {
@@ -117,7 +111,6 @@ async function cargarSelectores() {
 
 async function guardarProveedor() {
     if (!supabaseClient) return alert("Sin conexión a la base de datos");
-    
     const nombre = document.getElementById("prov_nombre").value.trim();
     const contacto = document.getElementById("prov_contacto").value.trim();
     const web = document.getElementById("prov_web").value.trim();
@@ -131,7 +124,6 @@ async function guardarProveedor() {
         cargarSelectores();
         cargarProveedoresFicha();
     } catch (err) {
-        console.error("Detalle del error:", err);
         alert("Error al guardar proveedor: " + (err.message || err));
     }
 }
