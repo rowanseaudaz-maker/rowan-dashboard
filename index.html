@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROWAN - Dashboard de Gestión</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Versión estable de Supabase SDK v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
@@ -29,14 +30,13 @@
 
         <!-- SECCIÓN 1: PRODUCTOS Y CARGA -->
         <div id="seccion-productos" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Formulario de Carga -->
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Cargar Producto de Proveedor</h2>
                 <form id="productForm" class="space-y-4">
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Proveedor</label>
                         <select id="proveedor_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                            <!-- Se carga dinámicamente -->
+                            <!-- Dinámico -->
                         </select>
                     </div>
                     <div>
@@ -46,7 +46,7 @@
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Categoría</label>
                         <select id="categoria_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-600">
-                            <!-- Se carga dinámicamente -->
+                            <!-- Dinámico -->
                         </select>
                     </div>
                     <div>
@@ -85,7 +85,6 @@
                 </form>
             </div>
 
-            <!-- Listado de Catálogo -->
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-2">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Catálogo de Artículos ROWAN</h2>
                 <div class="overflow-x-auto">
@@ -107,7 +106,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 2: PROVEEDORES Y SUS FICHAS -->
+        <!-- SECCIÓN 2: PROVEEDORES -->
         <div id="seccion-proveedores" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Nuevo Proveedor</h2>
@@ -137,7 +136,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 3: GESTIÓN DE CATEGORÍAS -->
+        <!-- SECCIÓN 3: CATEGORÍAS -->
         <div id="seccion-categorias" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nueva Categoría</h2>
