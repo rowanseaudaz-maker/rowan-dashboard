@@ -18,6 +18,7 @@
             <div class="flex items-center gap-4">
                 <nav class="flex flex-wrap gap-1 bg-zinc-900 p-1 rounded border border-zinc-800">
                     <button onclick="cambiarPestana('productos')" id="btn-productos" class="px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition">Catálogo</button>
+                    <button onclick="cambiarPestana('compras')" id="btn-compras" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Compras</button>
                     <button onclick="cambiarPestana('proveedores')" id="btn-proveedores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Proveedores</button>
                     <button onclick="cambiarPestana('categorias')" id="btn-categorias" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Categorías</button>
                     <button onclick="cambiarPestana('nombres')" id="btn-nombres" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Nombres</button>
@@ -124,7 +125,7 @@
                             <tr>
                                 <th class="pb-3">SKU</th>
                                 <th class="pb-3">Artículo ROWAN</th>
-                                <th class="pb-3">Proveedor</th>
+                                <th class="pb-3">Stock</th>
                                 <th class="pb-3">Costo Real</th>
                                 <th class="pb-3">Precio Venta</th>
                                 <th class="pb-3">Peso / Medidas</th>
@@ -135,6 +136,33 @@
                             <!-- Dinámico -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN NUEVA: MÓDULO DE COMPRAS -->
+        <div id="seccion-compras" class="hidden space-y-8">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Registrar Nueva Compra a Proveedor</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Seleccionar Proveedor</label>
+                        <select id="compra_proveedor_select" onchange="cargarProductosParaComprar()" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <!-- Dinámico -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="contenedor-items-compra" class="space-y-4">
+                    <p class="text-xs text-zinc-500">Selecciona un proveedor para ver sus productos disponibles y registrar cantidades y costos de compra.</p>
+                </div>
+            </div>
+
+            <!-- Historial de Compras -->
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Historial de Compras Realizadas</h2>
+                <div id="historialComprasContainer" class="space-y-4">
+                    <!-- Dinámico -->
                 </div>
             </div>
         </div>
