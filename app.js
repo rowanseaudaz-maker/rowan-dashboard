@@ -143,6 +143,7 @@ function cargarSelectoresCompras() {
                 select.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
             });
         }
+        cargarProductosParaComprar();
     } catch (e) {
         console.error("Error al cargar selector de compras", e);
     }
@@ -168,9 +169,13 @@ window.cargarProductosParaComprar = function() {
         }
 
         let html = `
-            <div class="overflow-x-auto">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
+                <h3 class="text-xs font-semibold uppercase text-zinc-400">Productos del Proveedor</h3>
+                <input type="text" id="buscadorItemsCompra" oninput="filtrarProductosCompra()" placeholder="Buscar producto en esta compra..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-72">
+            </div>
+            <div class="overflow-x-auto max-h-96 overflow-y-auto">
                 <table class="w-full text-left text-xs">
-                    <thead class="border-b border-zinc-800 text-zinc-400 uppercase">
+                    <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
                         <tr>
                             <th class="pb-2 px-2">Comprar</th>
                             <th class="pb-2 px-2">SKU</th>
@@ -181,12 +186,12 @@ window.cargarProductosParaComprar = function() {
                             <th class="pb-2 px-2">Cantidad</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-800/60">
+                    <tbody id="tablaItemsCompraBody" class="divide-y divide-zinc-800/60">
         `;
 
         prodsProv.forEach(p => {
             html += `
-                <tr>
+                <tr class="item-fila-compra" data-nombre="${p.nombre_rowan.toLowerCase()}" data-desc="${p.descripcion_proveedor.toLowerCase()}" data-sku="${p.sku.toLowerCase()}">
                     <td class="py-3 px-2">
                         <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
                     </td>
@@ -223,6 +228,22 @@ window.cargarProductosParaComprar = function() {
     } catch (e) {
         contenedor.innerHTML = `<p class="text-xs text-rose-400">Error al cargar los productos del proveedor.</p>`;
     }
+}
+
+window.filtrarProductosCompra = function() {
+    const filtro = document.getElementById("buscadorItemsCompra").value.toLowerCase();
+    const filas = document.querySelectorAll(".item-fila-compra");
+    
+    filas.forEach(fila => {
+        const nombre = fila.dataset.nombre;
+        const desc = fila.dataset.desc;
+        const sku = fila.dataset.sku;
+        if (nombre.includes(filtro) || desc.includes(filtro) || sku.includes(filtro)) {
+            fila.style.display = "";
+        } else {
+            fila.style.display = "none";
+        }
+    });
 }
 
 window.registrarCompraRealizada = function() {
@@ -274,13 +295,19 @@ window.registrarCompraRealizada = function() {
             return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
         }
 
+        // Calcular número de compra para este proveedor (ej: 001, 002...)
+        const comprasProveedor = compras.filter(c => c.proveedor_id === proveedorId);
+        const numeroCompra = String(comprasProveedor.length + 1).padStart(3, '0');
+
         const montoTotal = subtotalProductos + costoEnvio;
         const fechaActual = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
         const nuevaCompra = {
             id: 'compra_' + Date.now(),
-            fecha: fechaActual,
+            proveedor_id: proveedorId,
             proveedor: provNombre,
+            numero: numeroCompra,
+            fecha: fechaActual,
             envio: costoEnvio,
             total: montoTotal,
             items: itemsComprados
@@ -291,7 +318,7 @@ window.registrarCompraRealizada = function() {
         localStorage.setItem('rowan_productos', JSON.stringify(productos));
         localStorage.setItem('rowan_compras', JSON.stringify(compras));
 
-        alert(`¡Compra registrada con éxito!\nMonto total (incluyendo envío): $${montoTotal.toLocaleString()}`);
+        alert(`¡Compra #${numeroCompra} registrada con éxito para ${provNombre}!\nMonto total: $${montoTotal.toLocaleString()}`);
         
         cargarProductos();
         cargarProveedoresFicha();
@@ -313,47 +340,77 @@ function cargarHistorialCompras() {
             return;
         }
 
-        container.innerHTML = "";
+        // Agrupar compras por proveedor
+        let comprasPorProveedor = {};
         compras.forEach(compra => {
-            let itemsHtml = compra.items.map(it => `
-                <tr class="border-b border-zinc-900 text-xs">
-                    <td class="py-1 px-2 font-mono text-zinc-400">${it.sku}</td>
-                    <td class="py-1 px-2 text-zinc-300">${it.nombre}</td>
-                    <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad}</td>
-                    <td class="py-1 px-2 text-zinc-300">$${it.costoUnitario.toLocaleString()}</td>
-                </tr>
-            `).join('');
+            const provName = compra.proveedor || 'Sin Proveedor';
+            if (!comprasPorProveedor[provName]) {
+                comprasPorProveedor[provName] = [];
+            }
+            comprasPorProveedor[provName].push(compra);
+        });
 
-            container.innerHTML += `
-                <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
-                        <div>
-                            <span class="text-xs text-zinc-400">${compra.fecha}</span>
-                            <h3 class="font-bold text-zinc-100 text-sm">Proveedor: ${compra.proveedor}</h3>
+        container.innerHTML = "";
+        
+        // Recorrer cada proveedor y sus compras ordenadas
+        for (const [provNombre, listaCompras] of Object.entries(comprasPorProveedor)) {
+            let comprasHtml = "";
+
+            listaCompras.forEach(compra => {
+                let itemsHtml = compra.items.map(it => `
+                    <tr class="border-b border-zinc-900 text-xs">
+                        <td class="py-1 px-2 font-mono text-zinc-400">${it.sku}</td>
+                        <td class="py-1 px-2 text-zinc-300">${it.nombre}</td>
+                        <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad}</td>
+                        <td class="py-1 px-2 text-zinc-300">$${it.costoUnitario.toLocaleString()}</td>
+                    </tr>
+                `).join('');
+
+                const numDisplay = compra.numero ? `#${compra.numero}` : '#001';
+
+                comprasHtml += `
+                    <div class="bg-zinc-950 border border-zinc-800/80 p-4 rounded-lg mb-3">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
+                            <div>
+                                <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">${numDisplay}</span>
+                                <span class="text-xs text-zinc-400">${compra.fecha}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-zinc-400">Envío: $${(compra.envio || 0).toLocaleString()}</span>
+                                <span class="text-sm font-bold text-emerald-400">Total: $${compra.total.toLocaleString()}</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs text-zinc-400">Envío: $${(compra.envio || 0).toLocaleString()}</span>
-                            <span class="text-sm font-bold text-emerald-400">Total: $${compra.total.toLocaleString()}</span>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="text-[10px] uppercase text-zinc-500">
+                                    <tr>
+                                        <th class="pb-1 px-2">SKU</th>
+                                        <th class="pb-1 px-2">Artículo</th>
+                                        <th class="pb-1 px-2">Cantidad</th>
+                                        <th class="pb-1 px-2">Costo Unit.</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsHtml}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="text-[10px] uppercase text-zinc-500">
-                                <tr>
-                                    <th class="pb-1 px-2">SKU</th>
-                                    <th class="pb-1 px-2">Artículo</th>
-                                    <th class="pb-1 px-2">Cantidad</th>
-                                    <th class="pb-1 px-2">Costo Unit.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${itemsHtml}
-                            </tbody>
-                        </table>
+                `;
+            });
+
+            container.innerHTML += `
+                <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-lg mb-6">
+                    <h3 class="font-bold text-zinc-100 text-base mb-3 pb-2 border-b border-zinc-800 flex items-center justify-between">
+                        <span>Proveedor: ${provNombre}</span>
+                        <span class="text-xs bg-zinc-950 text-zinc-400 px-2 py-1 rounded font-normal">${listaCompras.length} compras registradas</span>
+                    </h3>
+                    <div class="space-y-3">
+                        ${comprasHtml}
                     </div>
                 </div>
             `;
-        });
+        }
     } catch (e) {
         container.innerHTML = `<p class="text-xs text-zinc-500">Error al cargar historial.</p>`;
     }
@@ -799,7 +856,7 @@ function guardarNombresImportados(nuevosNombres) {
     }
 }
 
-// --- PRODUCTOS: CREAR, EDITAR, ELIMINAR, BUSCAR ---
+// --- PRODUCTOS: CREAR, EDITAR, ELIMINAR, BUSCAR, VISIBILIDAD ---
 function procesarNuevoProducto() {
     const editId = document.getElementById("prod_edit_id").value;
     const proveedorId = document.getElementById("proveedor_select").value;
@@ -880,7 +937,8 @@ function procesarNuevoProducto() {
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
                 descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
                 costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
-                tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
+                tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
+                profundidad_cm: prof, visible: true // Por defecto visible
             };
 
             productos.unshift(nuevoProd);
@@ -961,6 +1019,20 @@ window.eliminarProducto = function(id) {
     }
 }
 
+window.toggleVisibilidadProducto = function(id, checkbox) {
+    try {
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const prod = productos.find(p => p.id === id);
+        if (prod) {
+            prod.visible = checkbox.checked;
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            cargarProductos();
+        }
+    } catch (e) {
+        console.error("Error al cambiar visibilidad", e);
+    }
+}
+
 window.actualizarCostoProducto = function(prodId, nuevoCosto) {
     const costoNum = parseFloat(nuevoCosto);
     if (isNaN(costoNum) || costoNum < 0) return;
@@ -991,7 +1063,6 @@ function cargarProductos() {
     
     try {
         const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
 
         const productosFiltrados = productos.filter(p => {
@@ -1011,6 +1082,7 @@ function cargarProductos() {
         productosFiltrados.forEach(p => {
             const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
             const stockActual = p.stock || 0;
+            const esVisible = p.visible !== false; // por defecto true
 
             let medidasTexto = [];
             if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
@@ -1026,8 +1098,20 @@ function cargarProductos() {
                 : 'bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-1 rounded';
             const tituloTipo = esManual ? 'Precio Manual' : 'Precio Automático (x2.2)';
 
+            // Estilos claros para Visibilidad (Verde / Rojo)
+            const badgeVisibilidad = esVisible 
+                ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700/80 px-2 py-1 rounded text-emerald-400 text-xs font-semibold" title="Visible en Tienda">
+                       <input type="checkbox" checked onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-emerald-600 text-emerald-500 focus:ring-0">
+                       <span>Visible</span>
+                   </label>`
+                : `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-rose-950/80 border border-rose-700/80 px-2 py-1 rounded text-rose-400 text-xs font-semibold" title="Oculto en Tienda">
+                       <input type="checkbox" onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-rose-600 text-rose-500 focus:ring-0">
+                       <span>No visible</span>
+                   </label>`;
+
             tbody.innerHTML += `
                 <tr class="hover:bg-zinc-800/50 transition">
+                    <td class="py-3 text-center">${badgeVisibilidad}</td>
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
                     <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
                     <td class="py-3 font-semibold font-mono text-amber-400">${stockActual} u.</td>
@@ -1035,7 +1119,6 @@ function cargarProductos() {
                     <td class="py-3">
                         <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
                     </td>
-                    <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
                     <td class="py-3 text-right">
                         <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
                         <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
