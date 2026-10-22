@@ -191,7 +191,7 @@ window.cargarProductosParaComprar = function() {
 
         prodsProv.forEach(p => {
             html += `
-                <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
+                <tr class="item-fila-compra" data-id="${p.id}" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
                     <td class="py-3 px-2">
                         <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
                     </td>
@@ -200,10 +200,10 @@ window.cargarProductosParaComprar = function() {
                     <td class="py-3 px-2 text-zinc-400">${p.descripcion_proveedor}</td>
                     <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock || 0}</td>
                     <td class="py-3 px-2">
-                        <input type="number" id="costo_compra_${p.id}" value="${p.costo_proveedor}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
+                        <input type="number" class="input-costo-compra w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none" value="${p.costo_proveedor}">
                     </td>
                     <td class="py-3 px-2">
-                        <input type="number" id="cant_compra_${p.id}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
+                        <input type="number" class="input-cant-compra w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none" value="1" min="1">
                     </td>
                 </tr>
             `;
@@ -271,10 +271,14 @@ window.registrarCompraRealizada = function() {
 
         checkboxes.forEach(cb => {
             const prodId = cb.value;
-            const cantInput = document.getElementById(`cant_compra_${prodId}`);
-            const costoInput = document.getElementById(`costo_compra_${prodId}`);
-            const cantidad = cantInput ? (parseInt(cantInput.value) || 0) : 0;
-            const nuevoCostoProv = costoInput ? (parseFloat(costoInput.value) || 0) : 0;
+            const fila = cb.closest('tr');
+            if (!fila) return;
+
+            const inputCant = fila.querySelector('.input-cant-compra');
+            const inputCosto = fila.querySelector('.input-costo-compra');
+
+            const cantidad = inputCant ? (parseInt(inputCant.value) || 0) : 0;
+            const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
 
             if (cantidad > 0) {
                 const prod = productos.find(p => p.id === prodId);
@@ -353,7 +357,6 @@ function cargarHistorialCompras() {
             return;
         }
 
-        // Filtrar compras si hay texto en el buscador
         const comprasFiltradas = compras.filter(compra => {
             const prov = compra.proveedor || '';
             const num = compra.numero || '001';
