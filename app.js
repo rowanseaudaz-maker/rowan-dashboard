@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
     cargarProveedoresFicha();
     cargarCategoriasGestion();
     cargarNombresGestion();
+    actualizarSelectNombresProducto();
 
     const productForm = document.getElementById("productForm");
     if (productForm) {
@@ -105,6 +106,38 @@ function cargarSelectores() {
         }
     } catch (e) {
         console.error("Error al cargar selectores", e);
+    }
+}
+
+// --- ACTUALIZAR SELECT DE NOMBRES EN CARGA DE PRODUCTOS (TACHANDO USADOS) ---
+function actualizarSelectNombresProducto() {
+    const select = document.getElementById("nombre_hombre_select");
+    if (!select) return;
+
+    try {
+        const nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+
+        // Extraer todos los nombres usados en los productos actuales
+        // El nombre rowan tiene formato "CATEGORIA NOMBRE" (ej: MOCHILA DANTE -> DANTE)
+        let nombresUsadosSet = new Set();
+        productos.forEach(p => {
+            if (p.nombre_rowan) {
+                const partes = p.nombre_rowan.split(' ');
+                if (partes.length > 1) {
+                    nombresUsadosSet.add(partes.slice(1).join(' ').toUpperCase());
+                }
+            }
+        });
+
+        select.innerHTML = '<option value="">Automático (Siguiente disponible en orden)</option>';
+        nombres.forEach(nom => {
+            const usado = nombresUsadosSet.has(nom.toUpperCase());
+            const etiqueta = usado ? `${nom} (USADO / OCUPADO)` : nom;
+            select.innerHTML += `<option value="${nom}" ${usado ? 'class="text-zinc-500 bg-zinc-900"' : ''}>${etiqueta}</option>`;
+        });
+    } catch (e) {
+        console.error("Error al actualizar nombres de producto", e);
     }
 }
 
@@ -168,6 +201,10 @@ window.cancelarEdicionProveedor = function() {
     document.getElementById("form-proveedor-titulo").textContent = "Nuevo Proveedor";
     document.getElementById("btn-guardar-prov").textContent = "Guardar Proveedor";
     document.getElementById("btn-cancelar-prov").classList.add("hidden");
+}
+
+window.filtrarProveedores = function() {
+    cargarProveedoresFicha();
 }
 
 // --- CATEGORÍAS ---
@@ -267,6 +304,7 @@ function guardarNombreNuevo() {
         localStorage.setItem('rowan_nombres', JSON.stringify(nombres));
         document.getElementById("nombreForm").reset();
         cargarNombresGestion();
+        actualizarSelectNombresProducto();
         alert("¡Nombre agregado con éxito!");
     } catch (e) {
         alert("Error al guardar nombre.");
@@ -280,6 +318,7 @@ window.eliminarNombre = function(index) {
         if (nombres.length === 0) nombres = ["ROWAN"];
         localStorage.setItem('rowan_nombres', JSON.stringify(nombres));
         cargarNombresGestion();
+        actualizarSelectNombresProducto();
     } catch (e) {
         console.error(e);
     }
@@ -291,6 +330,15 @@ function cargarNombresGestion() {
 
     try {
         const nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        let nombresUsadosSet = new Set();
+        productos.forEach(p => {
+            if (p.nombre_rowan) {
+                const partes = p.nombre_rowan.split(' ');
+                if (partes.length > 1) nombresUsadosSet.add(partes.slice(1).join(' ').toUpperCase());
+            }
+        });
+
         if (nombres.length === 0) {
             listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay nombres cargados.</li>`;
             return;
@@ -298,9 +346,13 @@ function cargarNombresGestion() {
 
         listado.innerHTML = "";
         nombres.forEach((nom, index) => {
+            const usado = nombresUsadosSet.has(nom.toUpperCase());
             listado.innerHTML += `
                 <li class="py-2.5 text-sm font-medium text-zinc-200 flex justify-between items-center border-b border-zinc-800/50">
-                    <span>${index + 1}. ${nom}</span>
+                    <div>
+                        <span>${index + 1}. ${nom}</span>
+                        ${usado ? '<span class="ml-2 text-[10px] bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded">Usado</span>' : ''}
+                    </div>
                     <button onclick="eliminarNombre(${index})" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
                 </li>
             `;
@@ -375,6 +427,7 @@ function guardarNombresImportados(nuevosNombres) {
         localStorage.setItem('rowan_nombres', JSON.stringify(nuevosNombres));
         localStorage.setItem('rowan_indice_nombre', '0');
         cargarNombresGestion();
+        actualizarSelectNombresProducto();
         alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente respetando el orden del archivo!`);
         document.getElementById("archivoNombres").value = "";
     } else {
@@ -382,17 +435,18 @@ function guardarNombresImportados(nuevosNombres) {
     }
 }
 
-// --- PRODUCTOS Y COSTOS (CON PESO Y MEDIDAS INCLUIDOS) ---
+// --- PRODUCTOS: CREAR, EDITAR, ELIMINAR, BUSCAR ---
 function procesarNuevoProducto() {
+    const editId = document.getElementById("prod_edit_id").value;
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
     const categoria = document.getElementById("categoria_select").value;
     const color = document.getElementById("color").value;
+    const nombreManualSeleccionado = document.getElementById("nombre_hombre_select").value;
     const costoProv = parseFloat(document.getElementById("costo_prov").value);
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
     
-    // Recapturar peso y medidas
     const peso = parseFloat(document.getElementById("peso").value) || 0;
     const alto = parseFloat(document.getElementById("alto").value) || null;
     const ancho = parseFloat(document.getElementById("ancho").value) || null;
@@ -404,43 +458,123 @@ function procesarNuevoProducto() {
     }
 
     try {
-        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const mismaCat = productos.filter(p => p.categoria === categoria);
-        const prefix = categoria.substring(0, 3).toUpperCase();
-        const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
 
-        let nombreBaseSingular = categoria.toUpperCase().slice(0, -1);
-        if (categoria === "Mochilas") nombreBaseSingular = "MOCHILA";
-        if (categoria === "Riñoneras") nombreBaseSingular = "RIÑONERA";
-        if (categoria === "Neceres") nombreBaseSingular = "NECESER";
-        if (categoria === "Relojes") nombreBaseSingular = "RELOJ";
-        if (categoria === "Cintos") nombreBaseSingular = "CINTO";
-        if (categoria === "Tote Bags") nombreBaseSingular = "TOTE BAG";
+        if (editId) {
+            // Edición de producto existente
+            const prod = productos.find(p => p.id === editId);
+            if (prod) {
+                prod.proveedor_id = proveedorId;
+                prod.descripcion_proveedor = descProveedor;
+                prod.categoria = categoria;
+                prod.color = color;
+                prod.costo_proveedor = costoProv;
+                prod.costo_packaging = costoPack;
+                prod.precio_venta = precioVenta;
+                prod.peso_kg = peso;
+                prod.alto_cm = alto;
+                prod.ancho_cm = ancho;
+                prod.profundidad_cm = prof;
+            }
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            alert("¡Artículo actualizado con éxito!");
+            cancelarEdicionProducto();
+        } else {
+            // Creación de producto nuevo
+            const mismaCat = productos.filter(p => p.categoria === categoria);
+            const prefix = categoria.substring(0, 3).toUpperCase();
+            const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
 
-        let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || ["ROWAN"];
-        let indiceContador = parseInt(localStorage.getItem('rowan_indice_nombre') || '0', 10);
-        const nombreElegido = nombres[indiceContador % nombres.length];
-        
-        localStorage.setItem('rowan_indice_nombre', (indiceContador + 1).toString());
+            let nombreBaseSingular = categoria.toUpperCase().slice(0, -1);
+            if (categoria === "Mochilas") nombreBaseSingular = "MOCHILA";
+            if (categoria === "Riñoneras") nombreBaseSingular = "RIÑONERA";
+            if (categoria === "Neceres") nombreBaseSingular = "NECESER";
+            if (categoria === "Relojes") nombreBaseSingular = "RELOJ";
+            if (categoria === "Cintos") nombreBaseSingular = "CINTO";
+            if (categoria === "Tote Bags") nombreBaseSingular = "TOTE BAG";
 
-        const nombreRowan = `${nombreBaseSingular} ${nombreElegido}`;
+            let nombreElegido = "";
+            if (nombreManualSeleccionado) {
+                nombreElegido = nombreManualSeleccionado;
+            } else {
+                let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || ["ROWAN"];
+                let indiceContador = parseInt(localStorage.getItem('rowan_indice_nombre') || '0', 10);
+                nombreElegido = nombres[indiceContador % nombres.length];
+                localStorage.setItem('rowan_indice_nombre', (indiceContador + 1).toString());
+            }
 
-        const nuevoProd = {
-            id: 'prod_' + Date.now(),
-            sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
-            proveedor_id: proveedorId, color, costo_proveedor: costoProv, costo_packaging: costoPack,
-            precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
-        };
+            const nombreRowan = `${nombreBaseSingular} ${nombreElegido}`;
 
-        productos.unshift(nuevoProd);
-        localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            const nuevoProd = {
+                id: 'prod_' + Date.now(),
+                sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
+                proveedor_id: proveedorId, color, costo_proveedor: costoProv, costo_packaging: costoPack,
+                precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
+            };
 
-        alert(`¡Artículo generado con éxito!\nSKU: ${sku}\nNombre: ${nombreRowan}`);
-        document.getElementById("productForm").reset();
+            productos.unshift(nuevoProd);
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            alert(`¡Artículo generado con éxito!\nSKU: ${sku}\nNombre: ${nombreRowan}`);
+            document.getElementById("productForm").reset();
+        }
+
         cargarProductos();
         cargarProveedoresFicha();
+        cargarNombresGestion();
+        actualizarSelectNombresProducto();
     } catch (err) {
         alert("Error al guardar producto: " + err.message);
+    }
+}
+
+window.editarProducto = function(id) {
+    try {
+        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const prod = productos.find(p => p.id === id);
+        if (prod) {
+            document.getElementById("prod_edit_id").value = prod.id;
+            document.getElementById("proveedor_select").value = prod.proveedor_id;
+            document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
+            document.getElementById("categoria_select").value = prod.categoria;
+            document.getElementById("color").value = prod.color || "";
+            document.getElementById("costo_prov").value = prod.costo_proveedor;
+            document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
+            document.getElementById("precio_venta").value = prod.precio_venta;
+            document.getElementById("peso").value = prod.peso_kg || "";
+            document.getElementById("alto").value = prod.alto_cm || "";
+            document.getElementById("ancho").value = prod.ancho_cm || "";
+            document.getElementById("prof").value = prod.profundidad_cm || "";
+
+            document.getElementById("form-producto-titulo").textContent = "Editar Producto";
+            document.getElementById("btn-guardar-prod").textContent = "Actualizar Producto";
+            document.getElementById("btn-cancelar-prod").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+window.cancelarEdicionProducto = function() {
+    document.getElementById("productForm").reset();
+    document.getElementById("prod_edit_id").value = "";
+    document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
+    document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
+    document.getElementById("btn-cancelar-prod").classList.add("hidden");
+}
+
+window.eliminarProducto = function(id) {
+    if (!confirm("¿Estás seguro de eliminar este producto del catálogo?")) return;
+    try {
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        productos = productos.filter(p => p.id !== id);
+        localStorage.setItem('rowan_productos', JSON.stringify(productos));
+        cargarProductos();
+        cargarProveedoresFicha();
+        cargarNombresGestion();
+        actualizarSelectNombresProducto();
+    } catch (e) {
+        console.error(e);
     }
 }
 
@@ -461,6 +595,10 @@ window.actualizarCostoProducto = function(prodId, nuevoCosto) {
     }
 }
 
+window.filtrarProductos = function() {
+    cargarProductos();
+}
+
 function cargarProductos() {
     const tbody = document.getElementById("productTableBody");
     if (!tbody) return;
@@ -468,14 +606,22 @@ function cargarProductos() {
     try {
         const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         const proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
+        const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
 
-        if (productos.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
+        const productosFiltrados = productos.filter(p => {
+            const matchNombre = p.nombre_rowan.toLowerCase().includes(filtro);
+            const matchDesc = p.descripcion_proveedor.toLowerCase().includes(filtro);
+            const matchSku = p.sku.toLowerCase().includes(filtro);
+            return matchNombre || matchDesc || matchSku;
+        });
+
+        if (productosFiltrados.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-zinc-500">No se encontraron productos.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = "";
-        productos.forEach(p => {
+        productosFiltrados.forEach(p => {
             const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
             const provObj = proveedores.find(pr => pr.id === p.proveedor_id);
             const provNombre = provObj ? provObj.nombre : 'Sin proveedor';
@@ -483,19 +629,23 @@ function cargarProductos() {
             tbody.innerHTML += `
                 <tr class="hover:bg-zinc-800/50 transition">
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
-                    <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color || ''} | ${p.categoria}</span></td>
+                    <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
                     <td class="py-3 text-zinc-400 text-xs">${provNombre}</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
                     <td class="py-3 font-semibold text-emerald-400">$${p.precio_venta.toLocaleString()}</td>
+                    <td class="py-3 text-right">
+                        <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
+                        <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
+                    </td>
                 </tr>
             `;
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
     }
 }
 
-// --- FICHAS DE PROVEEDORES (EN FORMATO TABLA LIMPIA) ---
+// --- FICHAS DE PROVEEDORES (CON BUSCADOR Y TABLA) ---
 function cargarProveedoresFicha() {
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
@@ -503,14 +653,17 @@ function cargarProveedoresFicha() {
     try {
         const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const filtroProv = document.getElementById("buscadorProveedores") ? document.getElementById("buscadorProveedores").value.toLowerCase() : "";
 
-        if (provs.length === 0) {
+        const provsFiltrados = provs.filter(p => p.nombre.toLowerCase().includes(filtroProv));
+
+        if (provsFiltrados.length === 0) {
             container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
             return;
         }
 
         container.innerHTML = "";
-        provs.forEach(prov => {
+        provsFiltrados.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
             let filasTabla = prodsProv.length > 0 
                 ? prodsProv.map(prod => `
