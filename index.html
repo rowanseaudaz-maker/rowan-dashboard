@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROWAN - Dashboard de Gestión</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen">
@@ -66,6 +67,32 @@
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Precio de Venta Manual ($)</label>
                         <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
+
+                    <!-- CAMPOS RESTAURADOS: Peso y Medidas -->
+                    <div class="border-t border-zinc-800 pt-3">
+                        <label class="block text-xs uppercase text-zinc-400 mb-2 font-semibold">Peso y Medidas (Opcional)</label>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label class="block text-[10px] uppercase text-zinc-500 mb-1">Peso (kg)</label>
+                                <input type="number" step="0.01" id="peso" placeholder="Ej: 0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase text-zinc-500 mb-1">Alto (cm)</label>
+                                <input type="number" id="alto" placeholder="Ej: 40" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] uppercase text-zinc-500 mb-1">Ancho (cm)</label>
+                                <input type="number" id="ancho" placeholder="Ej: 30" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase text-zinc-500 mb-1">Profundidad (cm)</label>
+                                <input type="number" id="prof" placeholder="Ej: 15" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
                         Generar Artículo Automático
                     </button>
@@ -174,9 +201,9 @@
                 </div>
 
                 <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
-                    <h2 class="text-lg font-semibold mb-4 text-zinc-200">Subir Listado de Nombres (Excel / CSV / TXT)</h2>
-                    <p class="text-xs text-zinc-400 mb-3">Sube un archivo CSV o TXT con los nombres (un nombre por renglón o en la primera columna). Se agregarán respetando ese orden.</p>
-                    <input type="file" id="archivoNombres" accept=".csv, .txt, .text" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 mb-4">
+                    <h2 class="text-lg font-semibold mb-4 text-zinc-200">Subir Listado de Nombres (Excel .xlsx / CSV / TXT)</h2>
+                    <p class="text-xs text-zinc-400 mb-3">Sube tu archivo de Excel (.xlsx), CSV o TXT. Tomará los nombres respetando el orden exacto.</p>
+                    <input type="file" id="archivoNombres" accept=".xlsx, .xls, .csv, .txt, .text" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 mb-4">
                     <button type="button" onclick="procesarArchivoNombres()" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded text-sm hover:bg-emerald-500 transition">
                         Importar y Actualizar Orden
                     </button>
