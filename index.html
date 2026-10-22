@@ -52,10 +52,10 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Color / Variante</label>
-                        <select id="color" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                            <!-- Dinámico -->
-                        </select>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Colores Disponibles (Selección Múltiple)</label>
+                        <div id="coloresCheckboxesContainer" class="bg-zinc-950 border border-zinc-800 rounded p-3 max-h-40 overflow-y-auto space-y-2">
+                            <!-- Dinámico: Checkboxes de colores -->
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre para Artículo (Hombre)</label>
@@ -257,7 +257,7 @@
             </div>
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Colores Disponibles</h2>
-                <p class="text-xs text-zinc-400 mb-3">Estos colores aparecerán en el menú desplegable al cargar tus productos.</p>
+                <p class="text-xs text-zinc-400 mb-3">Estos colores aparecerán como opciones múltiples al cargar tus productos.</p>
                 <ul id="coloresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
