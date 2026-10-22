@@ -279,7 +279,6 @@ window.registrarCompraRealizada = function() {
             const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
 
             if (cantidad > 0) {
-                // Búsqueda robusta por ID o por SKU
                 let prod = productos.find(p => p.id === prodRefId || p.sku === prodRefId);
                 if (prod) {
                     prod.stock = (prod.stock || 0) + cantidad;
@@ -304,9 +303,7 @@ window.registrarCompraRealizada = function() {
             return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
         }
 
-        // Numeración continua global independiente del proveedor (#001, #002, #003...)
         const numeroCompra = String(compras.length + 1).padStart(3, '0');
-
         const montoTotal = subtotalProductos + costoEnvio;
         const fechaActual = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -349,7 +346,6 @@ window.eliminarCompra = function(compraId) {
 
         const compra = compras[compraIndex];
 
-        // Descontar stock de los productos correspondientes
         if (Array.isArray(compra.items)) {
             compra.items.forEach(item => {
                 const prod = productos.find(p => p.id === item.id || p.sku === item.sku);
@@ -418,12 +414,17 @@ function cargarHistorialCompras() {
             const items = Array.isArray(compra.items) ? compra.items : [];
             
             items.forEach(it => {
+                const cantidad = it.cantidad || 1;
+                const costoUnit = it.costoUnitario || 0;
+                const subtotal = cantidad * costoUnit;
+
                 itemsHtml += `
                     <tr class="border-b border-zinc-900 text-xs">
-                        <td class="py-1 px-2 font-mono text-zinc-400">${it.sku || ''}</td>
-                        <td class="py-1 px-2 text-zinc-300">${it.nombre || ''}</td>
-                        <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad || 1}</td>
-                        <td class="py-1 px-2 text-zinc-300">$${(it.costoUnitario || 0).toLocaleString()}</td>
+                        <td class="py-2 px-2 font-mono text-zinc-400">${it.sku || ''}</td>
+                        <td class="py-2 px-2 text-zinc-300 font-medium">${it.nombre || ''}</td>
+                        <td class="py-2 px-2 text-amber-400 font-semibold">x${cantidad}</td>
+                        <td class="py-2 px-2 text-zinc-300">$${costoUnit.toLocaleString()}</td>
+                        <td class="py-2 px-2 text-emerald-400 font-bold">$${subtotal.toLocaleString()}</td>
                     </tr>
                 `;
             });
@@ -436,10 +437,10 @@ function cargarHistorialCompras() {
 
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 pb-2 border-b border-zinc-900 gap-2">
                         <div>
                             <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">${numDisplay}</span>
-                            <span class="font-bold text-zinc-100 text-sm mr-3">Proveedor: ${provNombre}</span>
+                            <span class="font-bold text-zinc-100 text-sm mr-3">Proveedor: <span class="text-emerald-400">${provNombre}</span></span>
                             <span class="text-xs text-zinc-400">${fechaCompra}</span>
                         </div>
                         <div class="flex items-center gap-3">
@@ -450,12 +451,13 @@ function cargarHistorialCompras() {
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left">
-                            <thead class="text-[10px] uppercase text-zinc-500">
+                            <thead class="text-[10px] uppercase text-zinc-500 border-b border-zinc-900">
                                 <tr>
-                                    <th class="pb-1 px-2">SKU</th>
-                                    <th class="pb-1 px-2">Artículo</th>
-                                    <th class="pb-1 px-2">Cantidad</th>
-                                    <th class="pb-1 px-2">Costo Unit.</th>
+                                    <th class="pb-1.5 px-2">SKU</th>
+                                    <th class="pb-1.5 px-2">Artículo</th>
+                                    <th class="pb-1.5 px-2">Cantidad</th>
+                                    <th class="pb-1.5 px-2">Costo Unit.</th>
+                                    <th class="pb-1.5 px-2">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -909,360 +911,5 @@ function guardarNombresImportados(nuevosNombres) {
         document.getElementById("archivoNombres").value = "";
     } else {
         alert("No se encontraron nombres válidos en el archivo.");
-    }
-}
-
-// --- PRODUCTOS: CREAR, EDITAR, ELIMINAR, BUSCAR, VISIBILIDAD ---
-function procesarNuevoProducto() {
-    const editId = document.getElementById("prod_edit_id").value;
-    const proveedorId = document.getElementById("proveedor_select").value;
-    const descProveedor = document.getElementById("desc_proveedor").value;
-    const descArticulo = document.getElementById("desc_articulo").value;
-    const categoria = document.getElementById("categoria_select").value;
-    
-    const checkboxesColores = document.querySelectorAll('input[name="producto_color"]:checked');
-    let coloresSeleccionados = Array.from(checkboxesColores).map(cb => cb.value);
-    const colorStr = coloresSeleccionados.length > 0 ? coloresSeleccionados.join(', ') : '';
-
-    const nombreManualSeleccionado = document.getElementById("nombre_hombre_select").value;
-    const costoProv = parseFloat(document.getElementById("costo_prov").value);
-    const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
-    const precioVenta = parseFloat(document.getElementById("precio_venta").value);
-    const tipoPrecio = document.getElementById("precio_venta").dataset.tipo || "automatico";
-    
-    const peso = parseFloat(document.getElementById("peso").value) || 0;
-    const alto = parseFloat(document.getElementById("alto").value) || null;
-    const ancho = parseFloat(document.getElementById("ancho").value) || null;
-    const prof = parseFloat(document.getElementById("prof").value) || null;
-
-    if (!proveedorId) {
-        alert("Por favor selecciona un proveedor.");
-        return;
-    }
-
-    try {
-        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-
-        if (editId) {
-            const prod = productos.find(p => p.id === editId);
-            if (prod) {
-                prod.proveedor_id = proveedorId;
-                prod.descripcion_proveedor = descProveedor;
-                prod.descripcion_articulo = descArticulo;
-                prod.categoria = categoria;
-                prod.color = colorStr;
-                prod.costo_proveedor = costoProv;
-                prod.costo_packaging = costoPack;
-                prod.precio_venta = precioVenta;
-                prod.tipo_precio = tipoPrecio;
-                prod.peso_kg = peso;
-                prod.alto_cm = alto;
-                prod.ancho_cm = ancho;
-                prod.profundidad_cm = prof;
-            }
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert("¡Artículo actualizado con éxito!");
-            cancelarEdicionProducto();
-        } else {
-            const mismaCat = productos.filter(p => p.categoria === categoria);
-            const prefix = categoria.substring(0, 3).toUpperCase();
-            const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
-
-            let nombreBaseSingular = categoria.toUpperCase().slice(0, -1);
-            if (categoria === "Mochilas") nombreBaseSingular = "MOCHILA";
-            if (categoria === "Riñoneras") nombreBaseSingular = "RIÑONERA";
-            if (categoria === "Neceres") nombreBaseSingular = "NECESER";
-            if (categoria === "Relojes") nombreBaseSingular = "RELOJ";
-            if (categoria === "Cintos") nombreBaseSingular = "CINTO";
-            if (categoria === "Tote Bags") nombreBaseSingular = "TOTE BAG";
-
-            let nombreElegido = "";
-            if (nombreManualSeleccionado) {
-                nombreElegido = nombreManualSeleccionado;
-            } else {
-                let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || ["ROWAN"];
-                let indiceContador = parseInt(localStorage.getItem('rowan_indice_nombre') || '0', 10);
-                nombreElegido = nombres[indiceContador % nombres.length];
-                localStorage.setItem('rowan_indice_nombre', (indiceContador + 1).toString());
-            }
-
-            const nombreRowan = `${nombreBaseSingular} ${nombreElegido}`;
-
-            const nuevoProd = {
-                id: 'prod_' + Date.now(),
-                sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
-                descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
-                costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
-                tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
-                profundidad_cm: prof, visible: true
-            };
-
-            productos.unshift(nuevoProd);
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert(`¡Artículo generado con éxito!\nSKU: ${sku}\nNombre: ${nombreRowan}`);
-            document.getElementById("productForm").reset();
-            actualizarCheckboxesColoresProducto();
-            document.getElementById("costo_pack").value = "1000";
-            verificarModoPrecio();
-        }
-
-        cargarProductos();
-        cargarProveedoresFicha();
-        cargarNombresGestion();
-        actualizarSelectNombresProducto();
-    } catch (err) {
-        alert("Error al guardar producto: " + err.message);
-    }
-}
-
-window.editarProducto = function(id) {
-    try {
-        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const prod = productos.find(p => p.id === id);
-        if (prod) {
-            document.getElementById("prod_edit_id").value = prod.id;
-            document.getElementById("proveedor_select").value = prod.proveedor_id;
-            document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
-            document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
-            document.getElementById("categoria_select").value = prod.categoria;
-            
-            const coloresGuardados = prod.color ? prod.color.split(', ').map(c => c.trim()) : [];
-            actualizarCheckboxesColoresProducto(coloresGuardados);
-
-            document.getElementById("costo_prov").value = prod.costo_proveedor;
-            document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
-            document.getElementById("precio_venta").value = prod.precio_venta;
-            verificarModoPrecio();
-
-            document.getElementById("peso").value = prod.peso_kg || "";
-            document.getElementById("alto").value = prod.alto_cm || "";
-            document.getElementById("ancho").value = prod.ancho_cm || "";
-            document.getElementById("prof").value = prod.profundidad_cm || "";
-
-            document.getElementById("form-producto-titulo").textContent = "Editar Producto";
-            document.getElementById("btn-guardar-prod").textContent = "Actualizar Producto";
-            document.getElementById("btn-cancelar-prod").classList.remove("hidden");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-window.cancelarEdicionProducto = function() {
-    document.getElementById("productForm").reset();
-    document.getElementById("prod_edit_id").value = "";
-    document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
-    document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
-    document.getElementById("btn-cancelar-prod").classList.add("hidden");
-    document.getElementById("costo_pack").value = "1000";
-    actualizarCheckboxesColoresProducto();
-    verificarModoPrecio();
-}
-
-window.eliminarProducto = function(id) {
-    if (!confirm("¿Estás seguro de eliminar este producto del catálogo?")) return;
-    try {
-        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        productos = productos.filter(p => p.id !== id);
-        localStorage.setItem('rowan_productos', JSON.stringify(productos));
-        cargarProductos();
-        cargarProveedoresFicha();
-        cargarNombresGestion();
-        actualizarSelectNombresProducto();
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-window.toggleVisibilidadProducto = function(id, checkbox) {
-    try {
-        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const prod = productos.find(p => p.id === id);
-        if (prod) {
-            prod.visible = checkbox.checked;
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            cargarProductos();
-        }
-    } catch (e) {
-        console.error("Error al cambiar visibilidad", e);
-    }
-}
-
-window.actualizarCostoProducto = function(prodId, nuevoCosto) {
-    const costoNum = parseFloat(nuevoCosto);
-    if (isNaN(costoNum) || costoNum < 0) return;
-
-    try {
-        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const prod = productos.find(p => p.id === prodId);
-        if (prod) {
-            prod.costo_proveedor = costoNum;
-            if (prod.tipo_precio !== "manual") {
-                prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
-            }
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            cargarProductos();
-        }
-    } catch (e) {
-        console.error("Error al actualizar costo", e);
-    }
-}
-
-window.filtrarProductos = function() {
-    cargarProductos();
-}
-
-function cargarProductos() {
-    const tbody = document.getElementById("productTableBody");
-    if (!tbody) return;
-    
-    try {
-        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
-
-        const productosFiltrados = productos.filter(p => {
-            const matchNombre = (p.nombre_rowan || '').toLowerCase().includes(filtro);
-            const matchDescProv = (p.descripcion_proveedor || '').toLowerCase().includes(filtro);
-            const matchDescArt = (p.descripcion_articulo || "").toLowerCase().includes(filtro);
-            const matchSku = (p.sku || '').toLowerCase().includes(filtro);
-            return matchNombre || matchDescProv || matchDescArt || matchSku;
-        });
-
-        if (productosFiltrados.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No se encontraron productos.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = "";
-        productosFiltrados.forEach(p => {
-            const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0);
-            const stockActual = p.stock !== undefined ? p.stock : 0;
-            const esVisible = p.visible !== false;
-
-            let medidasTexto = [];
-            if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
-            if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
-                let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
-                medidasTexto.push(`[${dims} cm]`);
-            }
-            const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : '<span class="text-zinc-600">No especificado</span>';
-
-            const esManual = p.tipo_precio === "manual";
-            const clasePrecio = esManual 
-                ? 'bg-sky-950/60 text-sky-300 border border-sky-800 px-2 py-1 rounded' 
-                : 'bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-1 rounded';
-            const tituloTipo = esManual ? 'Precio Manual' : 'Precio Automático (x2.2)';
-
-            const badgeVisibilidad = esVisible 
-                ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700/80 px-2 py-1 rounded text-emerald-400 text-xs font-semibold" title="Visible en Tienda">
-                       <input type="checkbox" checked onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-emerald-600 text-emerald-500 focus:ring-0">
-                       <span>Visible</span>
-                   </label>`
-                : `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-rose-950/80 border border-rose-700/80 px-2 py-1 rounded text-rose-400 text-xs font-semibold" title="Oculto en Tienda">
-                       <input type="checkbox" onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-rose-600 text-rose-500 focus:ring-0">
-                       <span>No visible</span>
-                   </label>`;
-
-            tbody.innerHTML += `
-                <tr class="hover:bg-zinc-800/50 transition">
-                    <td class="py-3 text-center">${badgeVisibilidad}</td>
-                    <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
-                    <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
-                    <td class="py-3 font-semibold font-mono text-amber-400">${stockActual} u.</td>
-                    <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
-                    <td class="py-3">
-                        <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
-                    </td>
-                    <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
-                    <td class="py-3 text-right">
-                        <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
-                        <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
-                    </td>
-                </tr>
-            `;
-        });
-    } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
-    }
-}
-
-// --- FICHAS DE PROVEEDORES ---
-function cargarProveedoresFicha() {
-    const container = document.getElementById("proveedoresListado");
-    if (!container) return;
-
-    try {
-        const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
-        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-        const filtroProv = document.getElementById("buscadorProveedores") ? document.getElementById("buscadorProveedores").value.toLowerCase() : "";
-
-        const provsFiltrados = provs.filter(p => p.nombre.toLowerCase().includes(filtroProv));
-
-        if (provsFiltrados.length === 0) {
-            container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
-            return;
-        }
-
-        container.innerHTML = "";
-        provsFiltrados.forEach(prov => {
-            const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
-            let filasTabla = prodsProv.length > 0 
-                ? prodsProv.map(prod => {
-                    const esManual = prod.tipo_precio === "manual";
-                    const clasePrecio = esManual ? 'text-sky-300' : 'text-amber-300';
-                    const stockVal = prod.stock !== undefined ? prod.stock : 0;
-                    return `
-                        <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
-                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
-                            <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
-                            <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
-                            <td class="py-2.5 px-3 font-mono text-amber-400">${stockVal} u.</td>
-                            <td class="py-2.5 px-3">
-                                <div class="flex items-center gap-1">
-                                    <span class="text-zinc-400 text-xs">$</span>
-                                    <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
-                                </div>
-                            </td>
-                            <td class="py-2.5 px-3 font-semibold ${clasePrecio}">$${prod.precio_venta.toLocaleString()}</td>
-                        </tr>
-                    `;
-                }).join('')
-                : `<tr><td colspan="6" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
-
-            container.innerHTML += `
-                <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h3 class="font-bold text-zinc-100 text-base">${prov.nombre}</h3>
-                            <p class="text-xs text-zinc-400">Contacto: ${prov.contacto || 'No especificado'} | Web: ${prov.web || 'No especificada'}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded text-zinc-300">${prodsProv.length} productos</span>
-                            <button onclick="editarProveedor('${prov.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
-                        </div>
-                    </div>
-                    <div class="mt-3 overflow-x-auto">
-                        <table class="w-full text-left text-xs">
-                            <thead class="border-b border-zinc-800 text-zinc-500 uppercase">
-                                <tr>
-                                    <th class="pb-2 px-3">SKU</th>
-                                    <th class="pb-2 px-3">Descripción Proveedor</th>
-                                    <th class="pb-2 px-3">Artículo ROWAN</th>
-                                    <th class="pb-2 px-3">Stock</th>
-                                    <th class="pb-2 px-3">Costo Prov.</th>
-                                    <th class="pb-2 px-3">Venta</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${filasTabla}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        });
-    } catch (e) {
-        container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
     }
 }
