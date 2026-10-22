@@ -21,9 +21,14 @@ if (!localStorage.getItem('rowan_nombres')) {
         "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"
     ]));
 }
+if (!localStorage.getItem('rowan_colores')) {
+    localStorage.setItem('rowan_colores', JSON.stringify([
+        "Negro", "Marrón", "Plateado", "Dorado", "Azul", "Gris", "Verde", "Blanco", "Rojo", "Camel"
+    ]));
+}
 
 window.cambiarPestana = function(pestana) {
-    const secciones = ["productos", "proveedores", "categorias", "nombres"];
+    const secciones = ["productos", "proveedores", "categorias", "nombres", "colores"];
     secciones.forEach(sec => {
         const el = document.getElementById(`seccion-${sec}`);
         if (el) el.classList.add("hidden");
@@ -50,7 +55,9 @@ document.addEventListener("DOMContentLoaded", () => {
     cargarProveedoresFicha();
     cargarCategoriasGestion();
     cargarNombresGestion();
+    cargarColoresGestion();
     actualizarSelectNombresProducto();
+    actualizarSelectColoresProducto();
 
     const productForm = document.getElementById("productForm");
     if (productForm) {
@@ -83,6 +90,14 @@ document.addEventListener("DOMContentLoaded", () => {
             guardarNombreNuevo();
         });
     }
+
+    const colorForm = document.getElementById("colorForm");
+    if (colorForm) {
+        colorForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            guardarColorNuevo();
+        });
+    }
 });
 
 function cargarSelectores() {
@@ -109,6 +124,81 @@ function cargarSelectores() {
     }
 }
 
+// --- GESTIÓN DE COLORES EDITABLES ---
+function actualizarSelectColoresProducto() {
+    const select = document.getElementById("color");
+    if (!select) return;
+
+    try {
+        const colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
+        select.innerHTML = '<option value="">Sin color / Único</option>';
+        colores.forEach(col => {
+            select.innerHTML += `<option value="${col}">${col}</option>`;
+        });
+    } catch (e) {
+        console.error("Error al actualizar colores", e);
+    }
+}
+
+function guardarColorNuevo() {
+    const input = document.getElementById("color_nuevo");
+    const nuevoColor = input.value.trim();
+    if (!nuevoColor) return;
+
+    try {
+        let colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
+        if (colores.some(c => c.toLowerCase() === nuevoColor.toLowerCase())) {
+            alert("Este color ya existe en la lista.");
+            return;
+        }
+        colores.push(nuevoColor);
+        localStorage.setItem('rowan_colores', JSON.stringify(colores));
+        input.value = "";
+        cargarColoresGestion();
+        actualizarSelectColoresProducto();
+        alert("¡Color agregado con éxito!");
+    } catch (e) {
+        alert("Error al guardar color.");
+    }
+}
+
+window.eliminarColor = function(index) {
+    try {
+        let colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
+        colores.splice(index, 1);
+        localStorage.setItem('rowan_colores', JSON.stringify(colores));
+        cargarColoresGestion();
+        actualizarSelectColoresProducto();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function cargarColoresGestion() {
+    const listado = document.getElementById("coloresListado");
+    if (!listado) return;
+
+    try {
+        const colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
+        if (colores.length === 0) {
+            listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay colores cargados.</li>`;
+            return;
+        }
+
+        listado.innerHTML = "";
+        colores.forEach((col, index) => {
+            listado.innerHTML += `
+                <li class="py-2.5 text-sm font-medium text-zinc-200 flex justify-between items-center border-b border-zinc-800/50">
+                    <span>${col}</span>
+                    <button onclick="eliminarColor(${index})" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
+                </li>
+            `;
+        });
+    } catch (e) {
+        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">Error al cargar colores.</li>`;
+    }
+}
+
 // --- ACTUALIZAR SELECT DE NOMBRES EN CARGA DE PRODUCTOS (TACHANDO USADOS) ---
 function actualizarSelectNombresProducto() {
     const select = document.getElementById("nombre_hombre_select");
@@ -118,8 +208,6 @@ function actualizarSelectNombresProducto() {
         const nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
         const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
 
-        // Extraer todos los nombres usados en los productos actuales
-        // El nombre rowan tiene formato "CATEGORIA NOMBRE" (ej: MOCHILA DANTE -> DANTE)
         let nombresUsadosSet = new Set();
         productos.forEach(p => {
             if (p.nombre_rowan) {
@@ -293,7 +381,7 @@ function cargarCategoriasGestion() {
     }
 }
 
-// --- NOMBRES (SOPORTE .XLSX, CSV, TXT) ---
+// --- NOMBRES ---
 function guardarNombreNuevo() {
     const inputNombre = document.getElementById("nombre_nuevo").value.trim().toUpperCase();
     if (!inputNombre) return;
@@ -461,7 +549,6 @@ function procesarNuevoProducto() {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
 
         if (editId) {
-            // Edición de producto existente
             const prod = productos.find(p => p.id === editId);
             if (prod) {
                 prod.proveedor_id = proveedorId;
@@ -480,7 +567,6 @@ function procesarNuevoProducto() {
             alert("¡Artículo actualizado con éxito!");
             cancelarEdicionProducto();
         } else {
-            // Creación de producto nuevo
             const mismaCat = productos.filter(p => p.categoria === categoria);
             const prefix = categoria.substring(0, 3).toUpperCase();
             const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
@@ -616,7 +702,7 @@ function cargarProductos() {
         });
 
         if (productosFiltrados.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-zinc-500">No se encontraron productos.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No se encontraron productos.</td></tr>`;
             return;
         }
 
@@ -626,6 +712,15 @@ function cargarProductos() {
             const provObj = proveedores.find(pr => pr.id === p.proveedor_id);
             const provNombre = provObj ? provObj.nombre : 'Sin proveedor';
 
+            // Formatear peso y medidas para que se vea limpio
+            let medidasTexto = [];
+            if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
+            if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
+                let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
+                medidasTexto.push(`[${dims} cm]`);
+            }
+            const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : '<span class="text-zinc-600">No especificado</span>';
+
             tbody.innerHTML += `
                 <tr class="hover:bg-zinc-800/50 transition">
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
@@ -633,6 +728,7 @@ function cargarProductos() {
                     <td class="py-3 text-zinc-400 text-xs">${provNombre}</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
                     <td class="py-3 font-semibold text-emerald-400">$${p.precio_venta.toLocaleString()}</td>
+                    <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
                     <td class="py-3 text-right">
                         <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
                         <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
@@ -641,11 +737,11 @@ function cargarProductos() {
             `;
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
     }
 }
 
-// --- FICHAS DE PROVEEDORES (CON BUSCADOR Y TABLA) ---
+// --- FICHAS DE PROVEEDORES ---
 function cargarProveedoresFicha() {
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
