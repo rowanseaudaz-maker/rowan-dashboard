@@ -253,11 +253,8 @@ window.registrarCompraRealizada = function() {
             if (cantidad > 0) {
                 const prod = productos.find(p => p.id === prodId);
                 if (prod) {
-                    // Sumar stock
                     prod.stock = (prod.stock || 0) + cantidad;
-                    // Actualizar costo de proveedor si cambió
                     prod.costo_proveedor = nuevoCostoProv;
-                    // Si el precio de venta era automático, recalcularlo con la fórmula (costo + packaging) * 2.2
                     if (prod.tipo_precio !== "manual") {
                         prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
                     }
@@ -807,6 +804,7 @@ function procesarNuevoProducto() {
     const editId = document.getElementById("prod_edit_id").value;
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
+    const descArticulo = document.getElementById("desc_articulo").value;
     const categoria = document.getElementById("categoria_select").value;
     
     const checkboxesColores = document.querySelectorAll('input[name="producto_color"]:checked');
@@ -837,6 +835,7 @@ function procesarNuevoProducto() {
             if (prod) {
                 prod.proveedor_id = proveedorId;
                 prod.descripcion_proveedor = descProveedor;
+                prod.descripcion_articulo = descArticulo;
                 prod.categoria = categoria;
                 prod.color = colorStr;
                 prod.costo_proveedor = costoProv;
@@ -879,8 +878,9 @@ function procesarNuevoProducto() {
             const nuevoProd = {
                 id: 'prod_' + Date.now(),
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
-                proveedor_id: proveedorId, color: colorStr, costo_proveedor: costoProv, costo_packaging: costoPack,
-                precio_venta: precioVenta, tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
+                descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
+                costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
+                tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
             };
 
             productos.unshift(nuevoProd);
@@ -909,6 +909,7 @@ window.editarProducto = function(id) {
             document.getElementById("prod_edit_id").value = prod.id;
             document.getElementById("proveedor_select").value = prod.proveedor_id;
             document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
+            document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
             document.getElementById("categoria_select").value = prod.categoria;
             
             const coloresGuardados = prod.color ? prod.color.split(', ').map(c => c.trim()) : [];
@@ -995,9 +996,10 @@ function cargarProductos() {
 
         const productosFiltrados = productos.filter(p => {
             const matchNombre = p.nombre_rowan.toLowerCase().includes(filtro);
-            const matchDesc = p.descripcion_proveedor.toLowerCase().includes(filtro);
+            const matchDescProv = p.descripcion_proveedor.toLowerCase().includes(filtro);
+            const matchDescArt = (p.descripcion_articulo || "").toLowerCase().includes(filtro);
             const matchSku = p.sku.toLowerCase().includes(filtro);
-            return matchNombre || matchDesc || matchSku;
+            return matchNombre || matchDescProv || matchDescArt || matchSku;
         });
 
         if (productosFiltrados.length === 0) {
@@ -1088,7 +1090,6 @@ function cargarProveedoresFicha() {
                 }).join('')
                 : `<tr><td colspan="6" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
 
-            container.html = container.innerHTML || "";
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
                     <div class="flex justify-between items-start mb-3">
