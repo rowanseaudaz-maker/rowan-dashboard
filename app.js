@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     cargarNombresGestion();
     cargarColoresGestion();
     actualizarSelectNombresProducto();
-    actualizarSelectColoresProducto();
+    actualizarCheckboxesColoresProducto();
 
     const productForm = document.getElementById("productForm");
     if (productForm) {
@@ -124,19 +124,30 @@ function cargarSelectores() {
     }
 }
 
-// --- GESTIÓN DE COLORES EDITABLES ---
-function actualizarSelectColoresProducto() {
-    const select = document.getElementById("color");
-    if (!select) return;
+// --- GESTIÓN DE COLORES MÚLTIPLES ---
+function actualizarCheckboxesColoresProducto(coloresSeleccionados = []) {
+    const container = document.getElementById("coloresCheckboxesContainer");
+    if (!container) return;
 
     try {
         const colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
-        select.innerHTML = '<option value="">Sin color / Único</option>';
+        if (colores.length === 0) {
+            container.innerHTML = `<span class="text-xs text-zinc-500">No hay colores cargados en la pestaña Colores.</span>`;
+            return;
+        }
+
+        container.innerHTML = "";
         colores.forEach(col => {
-            select.innerHTML += `<option value="${col}">${col}</option>`;
+            const isChecked = coloresSeleccionados.includes(col) ? 'checked' : '';
+            container.innerHTML += `
+                <label class="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer hover:text-zinc-100">
+                    <input type="checkbox" name="producto_color" value="${col}" ${isChecked} class="rounded bg-zinc-900 border-zinc-700 text-emerald-500 focus:ring-0">
+                    <span>${col}</span>
+                </label>
+            `;
         });
     } catch (e) {
-        console.error("Error al actualizar colores", e);
+        console.error("Error al actualizar checkboxes de colores", e);
     }
 }
 
@@ -155,7 +166,7 @@ function guardarColorNuevo() {
         localStorage.setItem('rowan_colores', JSON.stringify(colores));
         input.value = "";
         cargarColoresGestion();
-        actualizarSelectColoresProducto();
+        actualizarCheckboxesColoresProducto();
         alert("¡Color agregado con éxito!");
     } catch (e) {
         alert("Error al guardar color.");
@@ -168,7 +179,7 @@ window.eliminarColor = function(index) {
         colores.splice(index, 1);
         localStorage.setItem('rowan_colores', JSON.stringify(colores));
         cargarColoresGestion();
-        actualizarSelectColoresProducto();
+        actualizarCheckboxesColoresProducto();
     } catch (e) {
         console.error(e);
     }
@@ -529,7 +540,12 @@ function procesarNuevoProducto() {
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
     const categoria = document.getElementById("categoria_select").value;
-    const color = document.getElementById("color").value;
+    
+    // Obtener colores seleccionados de los checkboxes múltiples
+    const checkboxesColores = document.querySelectorAll('input[name="producto_color"]:checked');
+    let coloresSeleccionados = Array.from(checkboxesColores).map(cb => cb.value);
+    const colorStr = coloresSeleccionados.length > 0 ? coloresSeleccionados.join(', ') : '';
+
     const nombreManualSeleccionado = document.getElementById("nombre_hombre_select").value;
     const costoProv = parseFloat(document.getElementById("costo_prov").value);
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
@@ -554,7 +570,7 @@ function procesarNuevoProducto() {
                 prod.proveedor_id = proveedorId;
                 prod.descripcion_proveedor = descProveedor;
                 prod.categoria = categoria;
-                prod.color = color;
+                prod.color = colorStr;
                 prod.costo_proveedor = costoProv;
                 prod.costo_packaging = costoPack;
                 prod.precio_venta = precioVenta;
@@ -594,7 +610,7 @@ function procesarNuevoProducto() {
             const nuevoProd = {
                 id: 'prod_' + Date.now(),
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
-                proveedor_id: proveedorId, color, costo_proveedor: costoProv, costo_packaging: costoPack,
+                proveedor_id: proveedorId, color: colorStr, costo_proveedor: costoProv, costo_packaging: costoPack,
                 precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
             };
 
@@ -602,6 +618,7 @@ function procesarNuevoProducto() {
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
             alert(`¡Artículo generado con éxito!\nSKU: ${sku}\nNombre: ${nombreRowan}`);
             document.getElementById("productForm").reset();
+            actualizarCheckboxesColoresProducto();
         }
 
         cargarProductos();
@@ -622,7 +639,11 @@ window.editarProducto = function(id) {
             document.getElementById("proveedor_select").value = prod.proveedor_id;
             document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
             document.getElementById("categoria_select").value = prod.categoria;
-            document.getElementById("color").value = prod.color || "";
+            
+            // Marcar los checkboxes guardados previamente
+            const coloresGuardados = prod.color ? prod.color.split(', ').map(c => c.trim()) : [];
+            actualizarCheckboxesColoresProducto(coloresGuardados);
+
             document.getElementById("costo_prov").value = prod.costo_proveedor;
             document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
             document.getElementById("precio_venta").value = prod.precio_venta;
@@ -647,6 +668,7 @@ window.cancelarEdicionProducto = function() {
     document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
     document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
     document.getElementById("btn-cancelar-prod").classList.add("hidden");
+    actualizarCheckboxesColoresProducto();
 }
 
 window.eliminarProducto = function(id) {
@@ -712,7 +734,6 @@ function cargarProductos() {
             const provObj = proveedores.find(pr => pr.id === p.proveedor_id);
             const provNombre = provObj ? provObj.nombre : 'Sin proveedor';
 
-            // Formatear peso y medidas para que se vea limpio
             let medidasTexto = [];
             if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
             if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
