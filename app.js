@@ -16,6 +16,9 @@ if (!localStorage.getItem('rowan_proveedores')) {
 if (!localStorage.getItem('rowan_productos')) {
     localStorage.setItem('rowan_productos', JSON.stringify([]));
 }
+if (!localStorage.getItem('rowan_compras')) {
+    localStorage.setItem('rowan_compras', JSON.stringify([]));
+}
 if (!localStorage.getItem('rowan_nombres')) {
     localStorage.setItem('rowan_nombres', JSON.stringify([
         "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"
@@ -28,7 +31,7 @@ if (!localStorage.getItem('rowan_colores')) {
 }
 
 window.cambiarPestana = function(pestana) {
-    const secciones = ["productos", "proveedores", "categorias", "nombres", "colores"];
+    const secciones = ["productos", "compras", "proveedores", "categorias", "nombres", "colores"];
     secciones.forEach(sec => {
         const el = document.getElementById(`seccion-${sec}`);
         if (el) el.classList.add("hidden");
@@ -41,6 +44,11 @@ window.cambiarPestana = function(pestana) {
 
     if (targetSec) targetSec.classList.remove("hidden");
     if (targetBtn) targetBtn.className = "px-3 py-1.5 text-xs font-medium rounded bg-zinc-800 text-zinc-100 transition";
+
+    if (pestana === 'compras') {
+        cargarSelectoresCompras();
+        cargarHistorialCompras();
+    }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -124,13 +132,242 @@ function cargarSelectores() {
     }
 }
 
+// --- MÓDULO DE COMPRAS ---
+function cargarSelectoresCompras() {
+    try {
+        const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
+        const select = document.getElementById("compra_proveedor_select");
+        if (select) {
+            select.innerHTML = '<option value="">Selecciona un proveedor...</option>';
+            provs.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+            });
+        }
+    } catch (e) {
+        console.error("Error al cargar selector de compras", e);
+    }
+}
+
+window.cargarProductosParaComprar = function() {
+    const proveedorId = document.getElementById("compra_proveedor_select").value;
+    const contenedor = document.getElementById("contenedor-items-compra");
+    if (!contenedor) return;
+
+    if (!proveedorId) {
+        contenedor.innerHTML = `<p class="text-xs text-zinc-500">Selecciona un proveedor para ver sus productos disponibles.</p>`;
+        return;
+    }
+
+    try {
+        const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const prodsProv = productos.filter(p => p.proveedor_id === proveedorId);
+
+        if (prodsProv.length === 0) {
+            contenedor.innerHTML = `<p class="text-xs text-zinc-400">Este proveedor no tiene productos cargados en el catálogo. Carga productos primero en la solapa Catálogo.</p>`;
+            return;
+        }
+
+        let html = `
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="border-b border-zinc-800 text-zinc-400 uppercase">
+                        <tr>
+                            <th class="pb-2 px-2">Comprar</th>
+                            <th class="pb-2 px-2">SKU</th>
+                            <th class="pb-2 px-2">Artículo ROWAN</th>
+                            <th class="pb-2 px-2">Descripción Prov.</th>
+                            <th class="pb-2 px-2">Stock Actual</th>
+                            <th class="pb-2 px-2">Costo Unit. Prov. ($)</th>
+                            <th class="pb-2 px-2">Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800/60">
+        `;
+
+        prodsProv.forEach(p => {
+            html += `
+                <tr>
+                    <td class="py-3 px-2">
+                        <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
+                    </td>
+                    <td class="py-3 px-2 font-mono text-zinc-400">${p.sku}</td>
+                    <td class="py-3 px-2 font-semibold text-zinc-200">${p.nombre_rowan} <span class="text-[10px] text-zinc-500 font-normal block">${p.color || 'Único'}</span></td>
+                    <td class="py-3 px-2 text-zinc-400">${p.descripcion_proveedor}</td>
+                    <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock || 0}</td>
+                    <td class="py-3 px-2">
+                        <input type="number" id="costo_compra_${p.id}" value="${p.costo_proveedor}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
+                    </td>
+                    <td class="py-3 px-2">
+                        <input type="number" id="cant_compra_${p.id}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 pt-4 border-t border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <label class="text-xs uppercase text-zinc-400">Costo de Envío ($):</label>
+                    <input type="number" id="envio_compra" value="0" class="w-32 bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                </div>
+                <button type="button" onclick="registrarCompraRealizada()" class="w-full md:w-auto bg-emerald-600 text-white font-medium px-6 py-2.5 rounded text-sm hover:bg-emerald-500 transition">
+                    Registrar Compra y Actualizar Stock
+                </button>
+            </div>
+        `;
+
+        contenedor.innerHTML = html;
+    } catch (e) {
+        contenedor.innerHTML = `<p class="text-xs text-rose-400">Error al cargar los productos del proveedor.</p>`;
+    }
+}
+
+window.registrarCompraRealizada = function() {
+    const proveedorId = document.getElementById("compra_proveedor_select").value;
+    if (!proveedorId) return alert("Selecciona un proveedor.");
+
+    const checkboxes = document.querySelectorAll('input[name="item_compra_check"]:checked');
+    if (checkboxes.length === 0) return alert("Selecciona al menos un producto para comprar.");
+
+    const costoEnvio = parseFloat(document.getElementById("envio_compra").value) || 0;
+
+    try {
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        let proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
+        let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+
+        const provObj = proveedores.find(p => p.id === proveedorId);
+        const provNombre = provObj ? provObj.nombre : 'Proveedor';
+
+        let itemsComprados = [];
+        let subtotalProductos = 0;
+
+        checkboxes.forEach(cb => {
+            const prodId = cb.value;
+            const cantidad = parseInt(document.getElementById(`cant_compra_${prodId}`).value) || 0;
+            const nuevoCostoProv = parseFloat(document.getElementById(`costo_compra_${prodId}`).value) || 0;
+
+            if (cantidad > 0) {
+                const prod = productos.find(p => p.id === prodId);
+                if (prod) {
+                    // Sumar stock
+                    prod.stock = (prod.stock || 0) + cantidad;
+                    // Actualizar costo de proveedor si cambió
+                    prod.costo_proveedor = nuevoCostoProv;
+                    // Si el precio de venta era automático, recalcularlo con la fórmula (costo + packaging) * 2.2
+                    if (prod.tipo_precio !== "manual") {
+                        prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
+                    }
+
+                    subtotalProductos += (nuevoCostoProv * cantidad);
+                    itemsComprados.push({
+                        sku: prod.sku,
+                        nombre: prod.nombre_rowan,
+                        cantidad,
+                        costoUnitario: nuevoCostoProv
+                    });
+                }
+            }
+        });
+
+        if (itemsComprados.length === 0) {
+            return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
+        }
+
+        const montoTotal = subtotalProductos + costoEnvio;
+        const fechaActual = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        const nuevaCompra = {
+            id: 'compra_' + Date.now(),
+            fecha: fechaActual,
+            proveedor: provNombre,
+            envio: costoEnvio,
+            total: montoTotal,
+            items: itemsComprados
+        };
+
+        compras.unshift(nuevaCompra);
+
+        localStorage.setItem('rowan_productos', JSON.stringify(productos));
+        localStorage.setItem('rowan_compras', JSON.stringify(compras));
+
+        alert(`¡Compra registrada con éxito!\nMonto total (incluyendo envío): $${montoTotal.toLocaleString()}`);
+        
+        cargarProductos();
+        cargarProveedoresFicha();
+        cargarProductosParaComprar();
+        cargarHistorialCompras();
+    } catch (err) {
+        alert("Error al registrar la compra: " + err.message);
+    }
+}
+
+function cargarHistorialCompras() {
+    const container = document.getElementById("historialComprasContainer");
+    if (!container) return;
+
+    try {
+        const compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+        if (compras.length === 0) {
+            container.innerHTML = `<p class="text-xs text-zinc-500">No hay compras registradas todavía.</p>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        compras.forEach(compra => {
+            let itemsHtml = compra.items.map(it => `
+                <tr class="border-b border-zinc-900 text-xs">
+                    <td class="py-1 px-2 font-mono text-zinc-400">${it.sku}</td>
+                    <td class="py-1 px-2 text-zinc-300">${it.nombre}</td>
+                    <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad}</td>
+                    <td class="py-1 px-2 text-zinc-300">$${it.costoUnitario.toLocaleString()}</td>
+                </tr>
+            `).join('');
+
+            container.innerHTML += `
+                <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
+                        <div>
+                            <span class="text-xs text-zinc-400">${compra.fecha}</span>
+                            <h3 class="font-bold text-zinc-100 text-sm">Proveedor: ${compra.proveedor}</h3>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-zinc-400">Envío: $${(compra.envio || 0).toLocaleString()}</span>
+                            <span class="text-sm font-bold text-emerald-400">Total: $${compra.total.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="text-[10px] uppercase text-zinc-500">
+                                <tr>
+                                    <th class="pb-1 px-2">SKU</th>
+                                    <th class="pb-1 px-2">Artículo</th>
+                                    <th class="pb-1 px-2">Cantidad</th>
+                                    <th class="pb-1 px-2">Costo Unit.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        container.innerHTML = `<p class="text-xs text-zinc-500">Error al cargar historial.</p>`;
+    }
+}
+
 // --- CÁLCULO AUTOMÁTICO DE PRECIO Y ESTILOS (AMARILLO / CELESTE) ---
 window.calcularPrecioAutomatico = function() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
     const precioInput = document.getElementById("precio_venta");
     
-    // Fórmula: (costo + packaging) * 2.2
     const precioAuto = (costoProv + costoPack) * 2.2;
     
     precioInput.value = precioAuto > 0 ? Math.round(precioAuto) : "";
@@ -144,16 +381,12 @@ window.verificarModoPrecio = function() {
     const precioActual = parseFloat(precioInput.value) || 0;
     
     const precioAuto = (costoProv + costoPack) * 2.2;
-
-    // Si coincide con el cálculo automático (permitiendo margen de redondeo) o está vacío
     const esAutomatico = Math.abs(precioActual - precioAuto) < 1;
 
     if (esAutomatico) {
-        // Recuadro Amarillo (Automático)
         precioInput.className = "w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-amber-950/40 text-amber-300 border-amber-600";
         precioInput.dataset.tipo = "automatico";
     } else {
-        // Recuadro Celeste (Manual)
         precioInput.className = "w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-sky-950/40 text-sky-300 border-sky-600";
         precioInput.dataset.tipo = "manual";
     }
@@ -245,7 +478,7 @@ function cargarColoresGestion() {
     }
 }
 
-// --- ACTUALIZAR SELECT DE NOMBRES EN CARGA DE PRODUCTOS (TACHANDO USADOS) ---
+// --- NOMBRES ---
 function actualizarSelectNombresProducto() {
     const select = document.getElementById("nombre_hombre_select");
     if (!select) return;
@@ -647,7 +880,7 @@ function procesarNuevoProducto() {
                 id: 'prod_' + Date.now(),
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
                 proveedor_id: proveedorId, color: colorStr, costo_proveedor: costoProv, costo_packaging: costoPack,
-                precio_venta: precioVenta, tipo_precio: tipoPrecio, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
+                precio_venta: precioVenta, tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
             };
 
             productos.unshift(nuevoProd);
@@ -736,7 +969,6 @@ window.actualizarCostoProducto = function(prodId, nuevoCosto) {
         const prod = productos.find(p => p.id === prodId);
         if (prod) {
             prod.costo_proveedor = costoNum;
-            // Si el precio era automático, recalcular automáticamente al cambiar el costo
             if (prod.tipo_precio !== "manual") {
                 prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
             }
@@ -776,8 +1008,7 @@ function cargarProductos() {
         tbody.innerHTML = "";
         productosFiltrados.forEach(p => {
             const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
-            const provObj = proveedores.find(pr => pr.id === p.proveedor_id);
-            const provNombre = provObj ? provObj.nombre : 'Sin proveedor';
+            const stockActual = p.stock || 0;
 
             let medidasTexto = [];
             if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
@@ -787,7 +1018,6 @@ function cargarProductos() {
             }
             const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : '<span class="text-zinc-600">No especificado</span>';
 
-            // Estilo visual del precio en la tabla según si es automático o manual
             const esManual = p.tipo_precio === "manual";
             const clasePrecio = esManual 
                 ? 'bg-sky-950/60 text-sky-300 border border-sky-800 px-2 py-1 rounded' 
@@ -798,7 +1028,7 @@ function cargarProductos() {
                 <tr class="hover:bg-zinc-800/50 transition">
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
                     <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
-                    <td class="py-3 text-zinc-400 text-xs">${provNombre}</td>
+                    <td class="py-3 font-semibold font-mono text-amber-400">${stockActual} u.</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
                     <td class="py-3">
                         <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
@@ -845,6 +1075,7 @@ function cargarProveedoresFicha() {
                             <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
                             <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
                             <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
+                            <td class="py-2.5 px-3 font-mono text-amber-400">${prod.stock || 0} u.</td>
                             <td class="py-2.5 px-3">
                                 <div class="flex items-center gap-1">
                                     <span class="text-zinc-400 text-xs">$</span>
@@ -855,8 +1086,9 @@ function cargarProveedoresFicha() {
                         </tr>
                     `;
                 }).join('')
-                : `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
+                : `<tr><td colspan="6" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
 
+            container.html = container.innerHTML || "";
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
                     <div class="flex justify-between items-start mb-3">
@@ -876,6 +1108,7 @@ function cargarProveedoresFicha() {
                                     <th class="pb-2 px-3">SKU</th>
                                     <th class="pb-2 px-3">Descripción Proveedor</th>
                                     <th class="pb-2 px-3">Artículo ROWAN</th>
+                                    <th class="pb-2 px-3">Stock</th>
                                     <th class="pb-2 px-3">Costo Prov.</th>
                                     <th class="pb-2 px-3">Venta</th>
                                 </tr>
