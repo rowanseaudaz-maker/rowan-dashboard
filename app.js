@@ -191,7 +191,7 @@ window.cargarProductosParaComprar = function() {
 
         prodsProv.forEach(p => {
             html += `
-                <tr class="item-fila-compra" data-nombre="${p.nombre_rowan.toLowerCase()}" data-desc="${p.descripcion_proveedor.toLowerCase()}" data-sku="${p.sku.toLowerCase()}">
+                <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
                     <td class="py-3 px-2">
                         <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
                     </td>
@@ -231,13 +231,15 @@ window.cargarProductosParaComprar = function() {
 }
 
 window.filtrarProductosCompra = function() {
-    const filtro = document.getElementById("buscadorItemsCompra").value.toLowerCase();
+    const inputBuscador = document.getElementById("buscadorItemsCompra");
+    if (!inputBuscador) return;
+    const filtro = inputBuscador.value.toLowerCase();
     const filas = document.querySelectorAll(".item-fila-compra");
     
     filas.forEach(fila => {
-        const nombre = fila.dataset.nombre;
-        const desc = fila.dataset.desc;
-        const sku = fila.dataset.sku;
+        const nombre = fila.dataset.nombre || "";
+        const desc = fila.dataset.desc || "";
+        const sku = fila.dataset.sku || "";
         if (nombre.includes(filtro) || desc.includes(filtro) || sku.includes(filtro)) {
             fila.style.display = "";
         } else {
@@ -259,6 +261,7 @@ window.registrarCompraRealizada = function() {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         let proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+        if (!Array.isArray(compras)) compras = [];
 
         const provObj = proveedores.find(p => p.id === proveedorId);
         const provNombre = provObj ? provObj.nombre : 'Proveedor';
@@ -268,8 +271,10 @@ window.registrarCompraRealizada = function() {
 
         checkboxes.forEach(cb => {
             const prodId = cb.value;
-            const cantidad = parseInt(document.getElementById(`cant_compra_${prodId}`).value) || 0;
-            const nuevoCostoProv = parseFloat(document.getElementById(`costo_compra_${prodId}`).value) || 0;
+            const cantInput = document.getElementById(`cant_compra_${prodId}`);
+            const costoInput = document.getElementById(`costo_compra_${prodId}`);
+            const cantidad = cantInput ? (parseInt(cantInput.value) || 0) : 0;
+            const nuevoCostoProv = costoInput ? (parseFloat(costoInput.value) || 0) : 0;
 
             if (cantidad > 0) {
                 const prod = productos.find(p => p.id === prodId);
@@ -295,7 +300,7 @@ window.registrarCompraRealizada = function() {
             return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
         }
 
-        // Numeración continua global (001, 002, 003...)
+        // Numeración continua global independiente del proveedor (#001, #002, #003...)
         const numeroCompra = String(compras.length + 1).padStart(3, '0');
 
         const montoTotal = subtotalProductos + costoEnvio;
@@ -337,20 +342,27 @@ function cargarHistorialCompras() {
     if (!container) return;
 
     try {
-        const compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
-        const filtro = document.getElementById("buscadorHistorialCompras") ? document.getElementById("buscadorHistorialCompras").value.toLowerCase() : "";
+        let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+        if (!Array.isArray(compras)) compras = [];
+
+        const filtroEl = document.getElementById("buscadorHistorialCompras");
+        const filtro = filtroEl ? filtroEl.value.toLowerCase() : "";
 
         if (compras.length === 0) {
             container.innerHTML = `<p class="text-xs text-zinc-500">No hay compras registradas todavía.</p>`;
             return;
         }
 
-        // Filtrar compras si hay texto en el buscador (busca en proveedor, número, SKU o nombre de artículo)
+        // Filtrar compras si hay texto en el buscador
         const comprasFiltradas = compras.filter(compra => {
-            const matchProv = compra.proveedor.toLowerCase().includes(filtro);
-            const matchNum = compra.numero.toLowerCase().includes(filtro);
-            const matchItem = compra.items.some(it => 
-                it.sku.toLowerCase().includes(filtro) || it.nombre.toLowerCase().includes(filtro)
+            const prov = compra.proveedor || '';
+            const num = compra.numero || '001';
+            const items = Array.isArray(compra.items) ? compra.items : [];
+
+            const matchProv = prov.toLowerCase().includes(filtro);
+            const matchNum = num.toLowerCase().includes(filtro);
+            const matchItem = items.some(it => 
+                (it.sku || '').toLowerCase().includes(filtro) || (it.nombre || '').toLowerCase().includes(filtro)
             );
             return matchProv || matchNum || matchItem;
         });
@@ -360,77 +372,62 @@ function cargarHistorialCompras() {
             return;
         }
 
-        // Agrupar compras filtradas por proveedor
-        let comprasPorProveedor = {};
-        comprasFiltradas.forEach(compra => {
-            const provName = compra.proveedor || 'Sin Proveedor';
-            if (!comprasPorProveedor[provName]) {
-                comprasPorProveedor[provName] = [];
-            }
-            comprasPorProveedor[provName].push(compra);
-        });
-
         container.innerHTML = "";
         
-        for (const [provNombre, listaCompras] of Object.entries(comprasPorProveedor)) {
-            let comprasHtml = "";
-
-            listaCompras.forEach(compra => {
-                let itemsHtml = compra.items.map(it => `
+        comprasFiltradas.forEach(compra => {
+            let itemsHtml = "";
+            const items = Array.isArray(compra.items) ? compra.items : [];
+            
+            items.forEach(it => {
+                itemsHtml += `
                     <tr class="border-b border-zinc-900 text-xs">
-                        <td class="py-1 px-2 font-mono text-zinc-400">${it.sku}</td>
-                        <td class="py-1 px-2 text-zinc-300">${it.nombre}</td>
-                        <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad}</td>
-                        <td class="py-1 px-2 text-zinc-300">$${it.costoUnitario.toLocaleString()}</td>
+                        <td class="py-1 px-2 font-mono text-zinc-400">${it.sku || ''}</td>
+                        <td class="py-1 px-2 text-zinc-300">${it.nombre || ''}</td>
+                        <td class="py-1 px-2 text-amber-400 font-semibold">x${it.cantidad || 1}</td>
+                        <td class="py-1 px-2 text-zinc-300">$${(it.costoUnitario || 0).toLocaleString()}</td>
                     </tr>
-                `).join('');
-
-                const numDisplay = compra.numero ? `#${compra.numero}` : '#001';
-
-                comprasHtml += `
-                    <div class="bg-zinc-950 border border-zinc-800/80 p-4 rounded-lg mb-3">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
-                            <div>
-                                <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">${numDisplay}</span>
-                                <span class="text-xs text-zinc-400">${compra.fecha}</span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-xs text-zinc-400">Envío: $${(compra.envio || 0).toLocaleString()}</span>
-                                <span class="text-sm font-bold text-emerald-400">Total: $${compra.total.toLocaleString()}</span>
-                            </div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left">
-                                <thead class="text-[10px] uppercase text-zinc-500">
-                                    <tr>
-                                        <th class="pb-1 px-2">SKU</th>
-                                        <th class="pb-1 px-2">Artículo</th>
-                                        <th class="pb-1 px-2">Cantidad</th>
-                                        <th class="pb-1 px-2">Costo Unit.</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${itemsHtml}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 `;
             });
 
+            const numDisplay = compra.numero ? `#${compra.numero}` : '#001';
+            const provNombre = compra.proveedor || 'Proveedor';
+            const fechaCompra = compra.fecha || '';
+            const costoEnvio = compra.envio || 0;
+            const montoTotal = compra.total || 0;
+
             container.innerHTML += `
-                <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-lg mb-6">
-                    <h3 class="font-bold text-zinc-100 text-base mb-3 pb-2 border-b border-zinc-800 flex items-center justify-between">
-                        <span>Proveedor: ${provNombre}</span>
-                        <span class="text-xs bg-zinc-950 text-zinc-400 px-2 py-1 rounded font-normal">${listaCompras.length} compras</span>
-                    </h3>
-                    <div class="space-y-3">
-                        ${comprasHtml}
+                <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 pb-2 border-b border-zinc-900 gap-2">
+                        <div>
+                            <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">${numDisplay}</span>
+                            <span class="font-bold text-zinc-100 text-sm mr-3">Proveedor: ${provNombre}</span>
+                            <span class="text-xs text-zinc-400">${fechaCompra}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-zinc-400">Envío: $${costoEnvio.toLocaleString()}</span>
+                            <span class="text-sm font-bold text-emerald-400">Total: $${montoTotal.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="text-[10px] uppercase text-zinc-500">
+                                <tr>
+                                    <th class="pb-1 px-2">SKU</th>
+                                    <th class="pb-1 px-2">Artículo</th>
+                                    <th class="pb-1 px-2">Cantidad</th>
+                                    <th class="pb-1 px-2">Costo Unit.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${itemsHtml}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
-        }
+        });
     } catch (e) {
+        console.error(e);
         container.innerHTML = `<p class="text-xs text-zinc-500">Error al cargar historial.</p>`;
     }
 }
@@ -957,7 +954,7 @@ function procesarNuevoProducto() {
                 descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
                 costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
                 tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
-                profundidad_cm: prof, visible: true // Por defecto visible
+                profundidad_cm: prof, visible: true
             };
 
             productos.unshift(nuevoProd);
@@ -1085,10 +1082,10 @@ function cargarProductos() {
         const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
 
         const productosFiltrados = productos.filter(p => {
-            const matchNombre = p.nombre_rowan.toLowerCase().includes(filtro);
-            const matchDescProv = p.descripcion_proveedor.toLowerCase().includes(filtro);
+            const matchNombre = (p.nombre_rowan || '').toLowerCase().includes(filtro);
+            const matchDescProv = (p.descripcion_proveedor || '').toLowerCase().includes(filtro);
             const matchDescArt = (p.descripcion_articulo || "").toLowerCase().includes(filtro);
-            const matchSku = p.sku.toLowerCase().includes(filtro);
+            const matchSku = (p.sku || '').toLowerCase().includes(filtro);
             return matchNombre || matchDescProv || matchDescArt || matchSku;
         });
 
@@ -1099,7 +1096,7 @@ function cargarProductos() {
 
         tbody.innerHTML = "";
         productosFiltrados.forEach(p => {
-            const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
+            const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0);
             const stockActual = p.stock || 0;
             const esVisible = p.visible !== false;
 
