@@ -31,8 +31,9 @@
         <!-- SECCIÓN 1: PRODUCTOS Y CARGA -->
         <div id="seccion-productos" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
-                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Cargar Producto de Proveedor</h2>
+                <h2 id="form-producto-titulo" class="text-lg font-semibold mb-4 text-zinc-200">Cargar Producto de Proveedor</h2>
                 <form id="productForm" class="space-y-4">
+                    <input type="hidden" id="prod_edit_id" value="">
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Proveedor</label>
                         <select id="proveedor_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
@@ -51,7 +52,25 @@
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Color / Variante</label>
-                        <input type="text" id="color" placeholder="Ej: Negro" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                        <select id="color" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <option value="">Sin color / Único</option>
+                            <option value="Negro">Negro</option>
+                            <option value="Marrón">Marrón</option>
+                            <option value="Plateado">Plateado</option>
+                            <option value="Dorado">Dorado</option>
+                            <option value="Azul">Azul</option>
+                            <option value="Gris">Gris</option>
+                            <option value="Verde">Verde</option>
+                            <option value="Blanco">Blanco</option>
+                            <option value="Rojo">Rojo</option>
+                            <option value="Camel">Camel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre para Artículo (Hombre)</label>
+                        <select id="nombre_hombre_select" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <option value="">Automático (Siguiente disponible)</option>
+                        </select>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -68,7 +87,6 @@
                         <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
 
-                    <!-- CAMPOS RESTAURADOS: Peso y Medidas -->
                     <div class="border-t border-zinc-800 pt-3">
                         <label class="block text-xs uppercase text-zinc-400 mb-2 font-semibold">Peso y Medidas (Opcional)</label>
                         <div class="grid grid-cols-2 gap-2 mb-2">
@@ -93,14 +111,22 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
-                        Generar Artículo Automático
-                    </button>
+                    <div class="flex gap-2">
+                        <button type="submit" id="btn-guardar-prod" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                            Generar Artículo Automático
+                        </button>
+                        <button type="button" id="btn-cancelar-prod" onclick="cancelarEdicionProducto()" class="hidden px-4 bg-zinc-800 text-zinc-300 font-medium py-2.5 rounded text-sm hover:bg-zinc-700 transition">
+                            Cancelar
+                        </button>
+                    </div>
                 </form>
             </div>
 
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-2">
-                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Catálogo de Artículos ROWAN</h2>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                    <h2 class="text-lg font-semibold text-zinc-200">Catálogo de Artículos ROWAN</h2>
+                    <input type="text" id="buscadorProductos" oninput="filtrarProductos()" placeholder="Buscar por nombre o descripción..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-64">
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
                         <thead class="border-b border-zinc-800 text-zinc-400 uppercase text-xs">
@@ -110,6 +136,7 @@
                                 <th class="pb-3">Proveedor</th>
                                 <th class="pb-3">Costo Real</th>
                                 <th class="pb-3">Precio Venta</th>
+                                <th class="pb-3 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="productTableBody" class="divide-y divide-zinc-800 text-zinc-300">
@@ -149,7 +176,10 @@
                 </form>
             </div>
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-2">
-                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Fichas de Proveedores y Sus Productos</h2>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                    <h2 class="text-lg font-semibold text-zinc-200">Fichas de Proveedores y Sus Productos</h2>
+                    <input type="text" id="buscadorProveedores" oninput="filtrarProveedores()" placeholder="Buscar proveedor..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-64">
+                </div>
                 <div id="proveedoresListado" class="space-y-6">
                     <!-- Dinámico -->
                 </div>
@@ -212,7 +242,7 @@
 
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Listado de Nombres Disponibles</h2>
-                <p class="text-xs text-zinc-400 mb-3">El sistema tomará estos nombres en orden rotativo al generar cada nuevo artículo ROWAN.</p>
+                <p class="text-xs text-zinc-400 mb-3">El sistema tachará los nombres que ya hayan sido utilizados en productos.</p>
                 <ul id="nombresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
