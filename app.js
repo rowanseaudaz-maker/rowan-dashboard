@@ -124,6 +124,41 @@ function cargarSelectores() {
     }
 }
 
+// --- CÁLCULO AUTOMÁTICO DE PRECIO Y ESTILOS (AMARILLO / CELESTE) ---
+window.calcularPrecioAutomatico = function() {
+    const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
+    const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
+    const precioInput = document.getElementById("precio_venta");
+    
+    // Fórmula: (costo + packaging) * 2.2
+    const precioAuto = (costoProv + costoPack) * 2.2;
+    
+    precioInput.value = precioAuto > 0 ? Math.round(precioAuto) : "";
+    verificarModoPrecio();
+}
+
+window.verificarModoPrecio = function() {
+    const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
+    const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
+    const precioInput = document.getElementById("precio_venta");
+    const precioActual = parseFloat(precioInput.value) || 0;
+    
+    const precioAuto = (costoProv + costoPack) * 2.2;
+
+    // Si coincide con el cálculo automático (permitiendo margen de redondeo) o está vacío
+    const esAutomatico = Math.abs(precioActual - precioAuto) < 1;
+
+    if (esAutomatico) {
+        // Recuadro Amarillo (Automático)
+        precioInput.className = "w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-amber-950/40 text-amber-300 border-amber-600";
+        precioInput.dataset.tipo = "automatico";
+    } else {
+        // Recuadro Celeste (Manual)
+        precioInput.className = "w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-sky-950/40 text-sky-300 border-sky-600";
+        precioInput.dataset.tipo = "manual";
+    }
+}
+
 // --- GESTIÓN DE COLORES MÚLTIPLES ---
 function actualizarCheckboxesColoresProducto(coloresSeleccionados = []) {
     const container = document.getElementById("coloresCheckboxesContainer");
@@ -541,7 +576,6 @@ function procesarNuevoProducto() {
     const descProveedor = document.getElementById("desc_proveedor").value;
     const categoria = document.getElementById("categoria_select").value;
     
-    // Obtener colores seleccionados de los checkboxes múltiples
     const checkboxesColores = document.querySelectorAll('input[name="producto_color"]:checked');
     let coloresSeleccionados = Array.from(checkboxesColores).map(cb => cb.value);
     const colorStr = coloresSeleccionados.length > 0 ? coloresSeleccionados.join(', ') : '';
@@ -550,6 +584,7 @@ function procesarNuevoProducto() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value);
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
+    const tipoPrecio = document.getElementById("precio_venta").dataset.tipo || "automatico";
     
     const peso = parseFloat(document.getElementById("peso").value) || 0;
     const alto = parseFloat(document.getElementById("alto").value) || null;
@@ -574,6 +609,7 @@ function procesarNuevoProducto() {
                 prod.costo_proveedor = costoProv;
                 prod.costo_packaging = costoPack;
                 prod.precio_venta = precioVenta;
+                prod.tipo_precio = tipoPrecio;
                 prod.peso_kg = peso;
                 prod.alto_cm = alto;
                 prod.ancho_cm = ancho;
@@ -611,7 +647,7 @@ function procesarNuevoProducto() {
                 id: 'prod_' + Date.now(),
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
                 proveedor_id: proveedorId, color: colorStr, costo_proveedor: costoProv, costo_packaging: costoPack,
-                precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
+                precio_venta: precioVenta, tipo_precio: tipoPrecio, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
             };
 
             productos.unshift(nuevoProd);
@@ -619,6 +655,8 @@ function procesarNuevoProducto() {
             alert(`¡Artículo generado con éxito!\nSKU: ${sku}\nNombre: ${nombreRowan}`);
             document.getElementById("productForm").reset();
             actualizarCheckboxesColoresProducto();
+            document.getElementById("costo_pack").value = "1000";
+            verificarModoPrecio();
         }
 
         cargarProductos();
@@ -640,13 +678,14 @@ window.editarProducto = function(id) {
             document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
             document.getElementById("categoria_select").value = prod.categoria;
             
-            // Marcar los checkboxes guardados previamente
             const coloresGuardados = prod.color ? prod.color.split(', ').map(c => c.trim()) : [];
             actualizarCheckboxesColoresProducto(coloresGuardados);
 
             document.getElementById("costo_prov").value = prod.costo_proveedor;
             document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
             document.getElementById("precio_venta").value = prod.precio_venta;
+            verificarModoPrecio();
+
             document.getElementById("peso").value = prod.peso_kg || "";
             document.getElementById("alto").value = prod.alto_cm || "";
             document.getElementById("ancho").value = prod.ancho_cm || "";
@@ -668,7 +707,9 @@ window.cancelarEdicionProducto = function() {
     document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
     document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
     document.getElementById("btn-cancelar-prod").classList.add("hidden");
+    document.getElementById("costo_pack").value = "1000";
     actualizarCheckboxesColoresProducto();
+    verificarModoPrecio();
 }
 
 window.eliminarProducto = function(id) {
@@ -695,6 +736,10 @@ window.actualizarCostoProducto = function(prodId, nuevoCosto) {
         const prod = productos.find(p => p.id === prodId);
         if (prod) {
             prod.costo_proveedor = costoNum;
+            // Si el precio era automático, recalcular automáticamente al cambiar el costo
+            if (prod.tipo_precio !== "manual") {
+                prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
+            }
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
             cargarProductos();
         }
@@ -742,13 +787,22 @@ function cargarProductos() {
             }
             const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : '<span class="text-zinc-600">No especificado</span>';
 
+            // Estilo visual del precio en la tabla según si es automático o manual
+            const esManual = p.tipo_precio === "manual";
+            const clasePrecio = esManual 
+                ? 'bg-sky-950/60 text-sky-300 border border-sky-800 px-2 py-1 rounded' 
+                : 'bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-1 rounded';
+            const tituloTipo = esManual ? 'Precio Manual' : 'Precio Automático (x2.2)';
+
             tbody.innerHTML += `
                 <tr class="hover:bg-zinc-800/50 transition">
                     <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
                     <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
                     <td class="py-3 text-zinc-400 text-xs">${provNombre}</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
-                    <td class="py-3 font-semibold text-emerald-400">$${p.precio_venta.toLocaleString()}</td>
+                    <td class="py-3">
+                        <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
+                    </td>
                     <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
                     <td class="py-3 text-right">
                         <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
@@ -783,20 +837,24 @@ function cargarProveedoresFicha() {
         provsFiltrados.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
             let filasTabla = prodsProv.length > 0 
-                ? prodsProv.map(prod => `
-                    <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
-                        <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
-                        <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
-                        <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
-                        <td class="py-2.5 px-3">
-                            <div class="flex items-center gap-1">
-                                <span class="text-zinc-400 text-xs">$</span>
-                                <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
-                            </div>
-                        </td>
-                        <td class="py-2.5 px-3 font-semibold text-emerald-400">$${prod.precio_venta.toLocaleString()}</td>
-                    </tr>
-                `).join('')
+                ? prodsProv.map(prod => {
+                    const esManual = prod.tipo_precio === "manual";
+                    const clasePrecio = esManual ? 'text-sky-300' : 'text-amber-300';
+                    return `
+                        <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
+                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
+                            <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
+                            <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
+                            <td class="py-2.5 px-3">
+                                <div class="flex items-center gap-1">
+                                    <span class="text-zinc-400 text-xs">$</span>
+                                    <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
+                                </div>
+                            </td>
+                            <td class="py-2.5 px-3 font-semibold ${clasePrecio}">$${prod.precio_venta.toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('')
                 : `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
 
             container.innerHTML += `
