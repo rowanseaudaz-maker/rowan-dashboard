@@ -295,9 +295,8 @@ window.registrarCompraRealizada = function() {
             return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
         }
 
-        // Calcular número de compra para este proveedor (ej: 001, 002...)
-        const comprasProveedor = compras.filter(c => c.proveedor_id === proveedorId);
-        const numeroCompra = String(comprasProveedor.length + 1).padStart(3, '0');
+        // Numeración continua global (001, 002, 003...)
+        const numeroCompra = String(compras.length + 1).padStart(3, '0');
 
         const montoTotal = subtotalProductos + costoEnvio;
         const fechaActual = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -329,20 +328,41 @@ window.registrarCompraRealizada = function() {
     }
 }
 
+window.filtrarHistorialCompras = function() {
+    cargarHistorialCompras();
+}
+
 function cargarHistorialCompras() {
     const container = document.getElementById("historialComprasContainer");
     if (!container) return;
 
     try {
         const compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+        const filtro = document.getElementById("buscadorHistorialCompras") ? document.getElementById("buscadorHistorialCompras").value.toLowerCase() : "";
+
         if (compras.length === 0) {
             container.innerHTML = `<p class="text-xs text-zinc-500">No hay compras registradas todavía.</p>`;
             return;
         }
 
-        // Agrupar compras por proveedor
+        // Filtrar compras si hay texto en el buscador (busca en proveedor, número, SKU o nombre de artículo)
+        const comprasFiltradas = compras.filter(compra => {
+            const matchProv = compra.proveedor.toLowerCase().includes(filtro);
+            const matchNum = compra.numero.toLowerCase().includes(filtro);
+            const matchItem = compra.items.some(it => 
+                it.sku.toLowerCase().includes(filtro) || it.nombre.toLowerCase().includes(filtro)
+            );
+            return matchProv || matchNum || matchItem;
+        });
+
+        if (comprasFiltradas.length === 0) {
+            container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No se encontraron compras con ese criterio de búsqueda.</p>`;
+            return;
+        }
+
+        // Agrupar compras filtradas por proveedor
         let comprasPorProveedor = {};
-        compras.forEach(compra => {
+        comprasFiltradas.forEach(compra => {
             const provName = compra.proveedor || 'Sin Proveedor';
             if (!comprasPorProveedor[provName]) {
                 comprasPorProveedor[provName] = [];
@@ -352,7 +372,6 @@ function cargarHistorialCompras() {
 
         container.innerHTML = "";
         
-        // Recorrer cada proveedor y sus compras ordenadas
         for (const [provNombre, listaCompras] of Object.entries(comprasPorProveedor)) {
             let comprasHtml = "";
 
@@ -403,7 +422,7 @@ function cargarHistorialCompras() {
                 <div class="bg-zinc-900 border border-zinc-800 p-4 rounded-lg mb-6">
                     <h3 class="font-bold text-zinc-100 text-base mb-3 pb-2 border-b border-zinc-800 flex items-center justify-between">
                         <span>Proveedor: ${provNombre}</span>
-                        <span class="text-xs bg-zinc-950 text-zinc-400 px-2 py-1 rounded font-normal">${listaCompras.length} compras registradas</span>
+                        <span class="text-xs bg-zinc-950 text-zinc-400 px-2 py-1 rounded font-normal">${listaCompras.length} compras</span>
                     </h3>
                     <div class="space-y-3">
                         ${comprasHtml}
@@ -1082,7 +1101,7 @@ function cargarProductos() {
         productosFiltrados.forEach(p => {
             const costoReal = p.costo_proveedor + (p.costo_packaging || 0);
             const stockActual = p.stock || 0;
-            const esVisible = p.visible !== false; // por defecto true
+            const esVisible = p.visible !== false;
 
             let medidasTexto = [];
             if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
@@ -1098,7 +1117,6 @@ function cargarProductos() {
                 : 'bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-1 rounded';
             const tituloTipo = esManual ? 'Precio Manual' : 'Precio Automático (x2.2)';
 
-            // Estilos claros para Visibilidad (Verde / Rojo)
             const badgeVisibilidad = esVisible 
                 ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700/80 px-2 py-1 rounded text-emerald-400 text-xs font-semibold" title="Visible en Tienda">
                        <input type="checkbox" checked onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-emerald-600 text-emerald-500 focus:ring-0">
@@ -1119,6 +1137,7 @@ function cargarProductos() {
                     <td class="py-3">
                         <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
                     </td>
+                    <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
                     <td class="py-3 text-right">
                         <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
                         <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
