@@ -1,4 +1,4 @@
-// Sistema ROWAN - Gestión Integral Avanzada
+// Sistema ROWAN - Gestión Integral Avanzada con Respaldo de Seguridad
 
 if (!localStorage.getItem('rowan_categorias')) {
     localStorage.setItem('rowan_categorias', JSON.stringify([
