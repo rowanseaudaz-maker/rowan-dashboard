@@ -21,6 +21,7 @@
                     <button onclick="cambiarPestana('proveedores')" id="btn-proveedores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Proveedores</button>
                     <button onclick="cambiarPestana('categorias')" id="btn-categorias" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Categorías</button>
                     <button onclick="cambiarPestana('nombres')" id="btn-nombres" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Nombres</button>
+                    <button onclick="cambiarPestana('colores')" id="btn-colores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Colores</button>
                 </nav>
                 <div id="status" class="text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400">
                     Sistema Local Activo
@@ -53,17 +54,7 @@
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Color / Variante</label>
                         <select id="color" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                            <option value="">Sin color / Único</option>
-                            <option value="Negro">Negro</option>
-                            <option value="Marrón">Marrón</option>
-                            <option value="Plateado">Plateado</option>
-                            <option value="Dorado">Dorado</option>
-                            <option value="Azul">Azul</option>
-                            <option value="Gris">Gris</option>
-                            <option value="Verde">Verde</option>
-                            <option value="Blanco">Blanco</option>
-                            <option value="Rojo">Rojo</option>
-                            <option value="Camel">Camel</option>
+                            <!-- Dinámico -->
                         </select>
                     </div>
                     <div>
@@ -136,6 +127,7 @@
                                 <th class="pb-3">Proveedor</th>
                                 <th class="pb-3">Costo Real</th>
                                 <th class="pb-3">Precio Venta</th>
+                                <th class="pb-3">Peso / Medidas</th>
                                 <th class="pb-3 text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -244,6 +236,29 @@
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Listado de Nombres Disponibles</h2>
                 <p class="text-xs text-zinc-400 mb-3">El sistema tachará los nombres que ya hayan sido utilizados en productos.</p>
                 <ul id="nombresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
+                    <!-- Dinámico -->
+                </ul>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 5: GESTIÓN DE COLORES -->
+        <div id="seccion-colores" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nuevo Color</h2>
+                <form id="colorForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Nombre del Color</label>
+                        <input type="text" id="color_nuevo" required placeholder="Ej: Azul Marino, Visón..." class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-zinc-100 text-zinc-950 font-medium py-2.5 rounded text-sm hover:bg-zinc-200 transition">
+                        Añadir Color
+                    </button>
+                </form>
+            </div>
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h2 class="text-lg font-semibold mb-4 text-zinc-200">Colores Disponibles</h2>
+                <p class="text-xs text-zinc-400 mb-3">Estos colores aparecerán en el menú desplegable al cargar tus productos.</p>
+                <ul id="coloresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
             </div>
