@@ -191,7 +191,7 @@ window.cargarProductosParaComprar = function() {
 
         prodsProv.forEach(p => {
             html += `
-                <tr class="item-fila-compra" data-id="${p.id}" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
+                <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
                     <td class="py-3 px-2">
                         <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
                     </td>
@@ -200,10 +200,10 @@ window.cargarProductosParaComprar = function() {
                     <td class="py-3 px-2 text-zinc-400">${p.descripcion_proveedor}</td>
                     <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock || 0}</td>
                     <td class="py-3 px-2">
-                        <input type="number" class="input-costo-compra w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none" value="${p.costo_proveedor}">
+                        <input type="number" id="costo_compra_${p.id}" value="${p.costo_proveedor}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
                     </td>
                     <td class="py-3 px-2">
-                        <input type="number" class="input-cant-compra w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none" value="1" min="1">
+                        <input type="number" id="cant_compra_${p.id}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
                     </td>
                 </tr>
             `;
@@ -271,11 +271,8 @@ window.registrarCompraRealizada = function() {
 
         checkboxes.forEach(cb => {
             const prodId = cb.value;
-            const fila = cb.closest('tr');
-            if (!fila) return;
-
-            const inputCant = fila.querySelector('.input-cant-compra');
-            const inputCosto = fila.querySelector('.input-costo-compra');
+            const inputCant = document.getElementById(`cant_compra_${prodId}`);
+            const inputCosto = document.getElementById(`costo_compra_${prodId}`);
 
             const cantidad = inputCant ? (parseInt(inputCant.value) || 0) : 0;
             const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
@@ -291,6 +288,7 @@ window.registrarCompraRealizada = function() {
 
                     subtotalProductos += (nuevoCostoProv * cantidad);
                     itemsComprados.push({
+                        id: prod.id,
                         sku: prod.sku,
                         nombre: prod.nombre_rowan,
                         cantidad,
@@ -334,6 +332,42 @@ window.registrarCompraRealizada = function() {
         cargarHistorialCompras();
     } catch (err) {
         alert("Error al registrar la compra: " + err.message);
+    }
+}
+
+window.eliminarCompra = function(compraId) {
+    if (!confirm("¿Estás seguro de eliminar esta compra? Se descontará el stock sumado en su momento y se eliminará del historial.")) return;
+
+    try {
+        let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+
+        const compraIndex = compras.findIndex(c => c.id === compraId);
+        if (compraIndex === -1) return alert("No se encontró la compra.");
+
+        const compra = compras[compraIndex];
+
+        // Descontar stock de los productos correspondientes
+        if (Array.isArray(compra.items)) {
+            compra.items.forEach(item => {
+                const prod = productos.find(p => p.id === item.id || p.sku === item.sku);
+                if (prod) {
+                    prod.stock = Math.max(0, (prod.stock || 0) - (item.cantidad || 0));
+                }
+            });
+        }
+
+        compras.splice(compraIndex, 1);
+
+        localStorage.setItem('rowan_compras', JSON.stringify(compras));
+        localStorage.setItem('rowan_productos', JSON.stringify(productos));
+
+        alert("¡Compra eliminada y stock actualizado correctamente!");
+        cargarProductos();
+        cargarProveedoresFicha();
+        cargarHistorialCompras();
+    } catch (e) {
+        alert("Error al eliminar la compra: " + e.message);
     }
 }
 
@@ -409,6 +443,7 @@ function cargarHistorialCompras() {
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-zinc-400">Envío: $${costoEnvio.toLocaleString()}</span>
                             <span class="text-sm font-bold text-emerald-400">Total: $${montoTotal.toLocaleString()}</span>
+                            <button onclick="eliminarCompra('${compra.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition ml-2">Eliminar Compra</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
