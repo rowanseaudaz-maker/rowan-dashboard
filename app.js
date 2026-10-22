@@ -190,20 +190,21 @@ window.cargarProductosParaComprar = function() {
         `;
 
         prodsProv.forEach(p => {
+            const prodIdSafe = p.id || p.sku;
             html += `
                 <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
                     <td class="py-3 px-2">
-                        <input type="checkbox" name="item_compra_check" value="${p.id}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
+                        <input type="checkbox" name="item_compra_check" value="${prodIdSafe}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
                     </td>
                     <td class="py-3 px-2 font-mono text-zinc-400">${p.sku}</td>
                     <td class="py-3 px-2 font-semibold text-zinc-200">${p.nombre_rowan} <span class="text-[10px] text-zinc-500 font-normal block">${p.color || 'Único'}</span></td>
                     <td class="py-3 px-2 text-zinc-400">${p.descripcion_proveedor}</td>
-                    <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock || 0}</td>
+                    <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock !== undefined ? p.stock : 0}</td>
                     <td class="py-3 px-2">
-                        <input type="number" id="costo_compra_${p.id}" value="${p.costo_proveedor}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
+                        <input type="number" id="costo_compra_${prodIdSafe}" value="${p.costo_proveedor || 0}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
                     </td>
                     <td class="py-3 px-2">
-                        <input type="number" id="cant_compra_${p.id}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
+                        <input type="number" id="cant_compra_${prodIdSafe}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
                     </td>
                 </tr>
             `;
@@ -270,15 +271,16 @@ window.registrarCompraRealizada = function() {
         let subtotalProductos = 0;
 
         checkboxes.forEach(cb => {
-            const prodId = cb.value;
-            const inputCant = document.getElementById(`cant_compra_${prodId}`);
-            const inputCosto = document.getElementById(`costo_compra_${prodId}`);
+            const prodRefId = cb.value;
+            const inputCant = document.getElementById(`cant_compra_${prodRefId}`);
+            const inputCosto = document.getElementById(`costo_compra_${prodRefId}`);
 
             const cantidad = inputCant ? (parseInt(inputCant.value) || 0) : 0;
             const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
 
             if (cantidad > 0) {
-                const prod = productos.find(p => p.id === prodId);
+                // Búsqueda robusta por ID o por SKU
+                let prod = productos.find(p => p.id === prodRefId || p.sku === prodRefId);
                 if (prod) {
                     prod.stock = (prod.stock || 0) + cantidad;
                     prod.costo_proveedor = nuevoCostoProv;
@@ -1135,7 +1137,7 @@ function cargarProductos() {
         tbody.innerHTML = "";
         productosFiltrados.forEach(p => {
             const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0);
-            const stockActual = p.stock || 0;
+            const stockActual = p.stock !== undefined ? p.stock : 0;
             const esVisible = p.visible !== false;
 
             let medidasTexto = [];
@@ -1209,12 +1211,13 @@ function cargarProveedoresFicha() {
                 ? prodsProv.map(prod => {
                     const esManual = prod.tipo_precio === "manual";
                     const clasePrecio = esManual ? 'text-sky-300' : 'text-amber-300';
+                    const stockVal = prod.stock !== undefined ? prod.stock : 0;
                     return `
                         <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
                             <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
                             <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
                             <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
-                            <td class="py-2.5 px-3 font-mono text-amber-400">${prod.stock || 0} u.</td>
+                            <td class="py-2.5 px-3 font-mono text-amber-400">${stockVal} u.</td>
                             <td class="py-2.5 px-3">
                                 <div class="flex items-center gap-1">
                                     <span class="text-zinc-400 text-xs">$</span>
