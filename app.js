@@ -108,7 +108,7 @@ function cargarSelectores() {
     }
 }
 
-// --- PROVEEDORES: CREAR, EDITAR ---
+// --- PROVEEDORES ---
 function guardarProveedor() {
     const editId = document.getElementById("prov_edit_id").value;
     const nombre = document.getElementById("prov_nombre").value.trim();
@@ -170,7 +170,7 @@ window.cancelarEdicionProveedor = function() {
     document.getElementById("btn-cancelar-prov").classList.add("hidden");
 }
 
-// --- CATEGORÍAS: CREAR, EDITAR Y SKU INFORMATIVO ---
+// --- CATEGORÍAS ---
 function guardarCategoria() {
     const editId = document.getElementById("cat_edit_id").value;
     const nombre = document.getElementById("cat_nombre").value.trim();
@@ -256,7 +256,7 @@ function cargarCategoriasGestion() {
     }
 }
 
-// --- NOMBRES: GESTIÓN E IMPORTACIÓN DE EXCEL/TXT ---
+// --- NOMBRES (SOPORTE .XLSX, CSV, TXT) ---
 function guardarNombreNuevo() {
     const inputNombre = document.getElementById("nombre_nuevo").value.trim().toUpperCase();
     if (!inputNombre) return;
@@ -313,46 +313,76 @@ function cargarNombresGestion() {
 window.procesarArchivoNombres = function() {
     const input = document.getElementById("archivoNombres");
     if (!input.files || input.files.length === 0) {
-        alert("Por favor selecciona un archivo CSV o TXT.");
+        alert("Por favor selecciona un archivo (.xlsx, .csv o .txt).");
         return;
     }
 
     const file = input.files[0];
     const reader = new FileReader();
+    const extension = file.name.split('.').pop().toLowerCase();
 
-    reader.onload = function(e) {
-        try {
-            const contenido = e.target.result;
-            const lineas = contenido.split(/\r\n|\n/);
-            let nuevosNombres = [];
+    if (extension === 'xlsx' || extension === 'xls') {
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                let nuevosNombres = [];
+                json.forEach(row => {
+                    if (row[0]) {
+                        let val = String(row[0]).trim().toUpperCase();
+                        if (val && val !== "NOMBRE" && val !== "NOMBRES") {
+                            nuevosNombres.push(val);
+                        }
+                    }
+                });
 
-            lineas.forEach(linea => {
-                // Si es CSV tomamos la primera columna, si es TXT tomamos la línea entera
-                let columnas = linea.split(/[,;\t]/);
-                let val = columnas[0] ? columnas[0].replace(/["']/g, "").trim().toUpperCase() : "";
-                if (val && val !== "NOMBRE" && val !== "NOMBRES") {
-                    nuevosNombres.push(val);
-                }
-            });
-
-            if (nuevosNombres.length > 0) {
-                localStorage.setItem('rowan_nombres', JSON.stringify(nuevosNombres));
-                localStorage.setItem('rowan_indice_nombre', '0'); // Reiniciar contador
-                cargarNombresGestion();
-                alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente respetando el orden del archivo!`);
-                input.value = "";
-            } else {
-                alert("No se encontraron nombres válidos en el archivo.");
+                guardarNombresImportados(nuevosNombres);
+            } catch (err) {
+                alert("Error al leer el archivo Excel: " + err.message);
             }
-        } catch (err) {
-            alert("Error al leer el archivo: " + err.message);
-        }
-    };
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.onload = function(e) {
+            try {
+                const contenido = e.target.result;
+                const lineas = contenido.split(/\r\n|\n/);
+                let nuevosNombres = [];
 
-    reader.readAsText(file);
+                lineas.forEach(linea => {
+                    let columnas = linea.split(/[,;\t]/);
+                    let val = columnas[0] ? columnas[0].replace(/["']/g, "").trim().toUpperCase() : "";
+                    if (val && val !== "NOMBRE" && val !== "NOMBRES") {
+                        nuevosNombres.push(val);
+                    }
+                });
+
+                guardarNombresImportados(nuevosNombres);
+            } catch (err) {
+                alert("Error al leer el archivo: " + err.message);
+            }
+        };
+        reader.readAsText(file);
+    }
 }
 
-// --- PRODUCTOS Y COSTOS ---
+function guardarNombresImportados(nuevosNombres) {
+    if (nuevosNombres.length > 0) {
+        localStorage.setItem('rowan_nombres', JSON.stringify(nuevosNombres));
+        localStorage.setItem('rowan_indice_nombre', '0');
+        cargarNombresGestion();
+        alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente respetando el orden del archivo!`);
+        document.getElementById("archivoNombres").value = "";
+    } else {
+        alert("No se encontraron nombres válidos en el archivo.");
+    }
+}
+
+// --- PRODUCTOS Y COSTOS (CON PESO Y MEDIDAS INCLUIDOS) ---
 function procesarNuevoProducto() {
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
@@ -361,6 +391,12 @@ function procesarNuevoProducto() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value);
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
+    
+    // Recapturar peso y medidas
+    const peso = parseFloat(document.getElementById("peso").value) || 0;
+    const alto = parseFloat(document.getElementById("alto").value) || null;
+    const ancho = parseFloat(document.getElementById("ancho").value) || null;
+    const prof = parseFloat(document.getElementById("prof").value) || null;
 
     if (!proveedorId) {
         alert("Por favor selecciona un proveedor.");
@@ -393,7 +429,7 @@ function procesarNuevoProducto() {
             id: 'prod_' + Date.now(),
             sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
             proveedor_id: proveedorId, color, costo_proveedor: costoProv, costo_packaging: costoPack,
-            precio_venta: precioVenta
+            precio_venta: precioVenta, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, profundidad_cm: prof
         };
 
         productos.unshift(nuevoProd);
@@ -459,6 +495,7 @@ function cargarProductos() {
     }
 }
 
+// --- FICHAS DE PROVEEDORES (EN FORMATO TABLA LIMPIA) ---
 function cargarProveedoresFicha() {
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
@@ -475,31 +512,22 @@ function cargarProveedoresFicha() {
         container.innerHTML = "";
         provs.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
-            let productosHtml = prodsProv.length > 0 
+            let filasTabla = prodsProv.length > 0 
                 ? prodsProv.map(prod => `
-                    <li class="text-xs text-zinc-300 py-3 border-b border-zinc-800/50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
-                        <div class="flex flex-col md:flex-row gap-2 w-full xl:w-auto">
-                            <!-- Recuadro 1: Descripción del Proveedor -->
-                            <div class="bg-zinc-900 border border-zinc-800 px-3 py-2 rounded">
-                                <span class="text-[10px] uppercase text-zinc-400 block font-semibold">Descripción Proveedor</span>
-                                <span class="font-medium text-zinc-200">${prod.descripcion_proveedor}</span>
+                    <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
+                        <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
+                        <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
+                        <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
+                        <td class="py-2.5 px-3">
+                            <div class="flex items-center gap-1">
+                                <span class="text-zinc-400 text-xs">$</span>
+                                <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
                             </div>
-                            <!-- Recuadro 2: Nombre ROWAN y Variante -->
-                            <div class="bg-zinc-900 border border-emerald-950/60 px-3 py-2 rounded">
-                                <span class="text-[10px] uppercase text-emerald-500/80 block font-semibold">Artículo ROWAN (${prod.sku})</span>
-                                <span class="font-bold text-zinc-100">${prod.nombre_rowan}</span> <span class="text-zinc-400">(${prod.color || 'Único'})</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-3 justify-between w-full xl:w-auto">
-                            <div class="flex items-center gap-1 bg-zinc-900 px-2.5 py-1.5 rounded border border-zinc-800">
-                                <span class="text-zinc-400 text-[11px]">Costo: $</span>
-                                <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
-                            </div>
-                            <span class="text-xs text-zinc-400">Venta: <b class="text-emerald-400">$${prod.precio_venta}</b></span>
-                        </div>
-                    </li>
+                        </td>
+                        <td class="py-2.5 px-3 font-semibold text-emerald-400">$${prod.precio_venta.toLocaleString()}</td>
+                    </tr>
                 `).join('')
-                : `<li class="text-xs text-zinc-500 py-1">Aún no tiene productos cargados de este proveedor.</li>`;
+                : `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
 
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
@@ -513,9 +541,21 @@ function cargarProveedoresFicha() {
                             <button onclick="editarProveedor('${prov.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <p class="text-xs uppercase text-zinc-500 font-semibold mb-1">Listado de productos comprados:</p>
-                        <ul class="divide-y divide-zinc-900">${productosHtml}</ul>
+                    <div class="mt-3 overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="border-b border-zinc-800 text-zinc-500 uppercase">
+                                <tr>
+                                    <th class="pb-2 px-3">SKU</th>
+                                    <th class="pb-2 px-3">Descripción Proveedor</th>
+                                    <th class="pb-2 px-3">Artículo ROWAN</th>
+                                    <th class="pb-2 px-3">Costo Prov.</th>
+                                    <th class="pb-2 px-3">Venta</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${filasTabla}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
