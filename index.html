@@ -54,7 +54,7 @@
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Colores Disponibles (Selección Múltiple)</label>
                         <div id="coloresCheckboxesContainer" class="bg-zinc-950 border border-zinc-800 rounded p-3 max-h-40 overflow-y-auto space-y-2">
-                            <!-- Dinámico: Checkboxes de colores -->
+                            <!-- Dinámico -->
                         </div>
                     </div>
                     <div>
@@ -66,16 +66,16 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Prov. ($)</label>
-                            <input type="number" id="costo_prov" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <input type="number" id="costo_prov" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs uppercase text-zinc-400 mb-1">Packaging ($)</label>
-                            <input type="number" id="costo_pack" value="1000" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                            <input type="number" id="costo_pack" value="1000" oninput="calcularPrecioAutomatico()" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Precio de Venta Manual ($)</label>
-                        <input type="number" id="precio_venta" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                        <label class="block text-xs uppercase text-zinc-400 mb-1">Precio de Venta ($) <span class="text-[10px] text-zinc-500">(Auto amarillo / Manual celeste)</span></label>
+                        <input type="number" id="precio_venta" oninput="verificarModoPrecio()" required class="w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-amber-950/40 text-amber-300 border-amber-600">
                     </div>
 
                     <div class="border-t border-zinc-800 pt-3">
