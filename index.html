@@ -46,7 +46,7 @@
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor</label>
-                        <input type="text" id="desc_proveedor" required placeholder="Ej: Mochila urbana 17 pulgadas" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                        <input type="text" id="desc_proveedor" required placeholder="Ej: Bolso Marcos 17 pulgadas" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Artículo (Interna/Web)</label>
@@ -131,8 +131,8 @@
                             <tr>
                                 <th class="pb-3 text-center">Visibilidad</th>
                                 <th class="pb-3">SKU</th>
-                                <th class="pb-3">Artículo ROWAN</th>
-                                <th class="pb-3">Stock</th>
+                                <th class="pb-3">Artículo ROWAN / Color</th>
+                                <th class="pb-3">Stock por Color</th>
                                 <th class="pb-3">Costo Real</th>
                                 <th class="pb-3">Precio Venta</th>
                                 <th class="pb-3 text-right">Acciones</th>
@@ -159,7 +159,7 @@
                     </div>
                 </div>
                 <div id="contenedor-items-compra" class="space-y-4">
-                    <p class="text-xs text-zinc-500">Selecciona un proveedor para ver sus productos disponibles y registrar cantidades y costos de compra.</p>
+                    <p class="text-xs text-zinc-500">Selecciona un proveedor para ver sus productos y registrar cantidades independientes por color.</p>
                 </div>
             </div>
 
@@ -301,7 +301,7 @@
                 <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-zinc-200">Exportar a Tienda Negocio</h2>
-                        <p class="text-xs text-zinc-400 mt-1">Genera el Excel dividiendo cada color en filas separadas con su respectiva variante.</p>
+                        <p class="text-xs text-zinc-400 mt-1">Genera el Excel dividiendo cada color en filas separadas con su stock independiente.</p>
                     </div>
                     <button onclick="exportarExcelTiendanube()" class="bg-emerald-600 text-white font-medium px-5 py-2.5 rounded text-sm hover:bg-emerald-500 transition flex items-center justify-center gap-2">
                         📥 Descargar Excel para Tienda Negocio
@@ -312,7 +312,7 @@
                 <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-zinc-200">Actualizar desde Tienda Negocio</h2>
-                        <p class="text-xs text-zinc-400 mt-1">Sube el archivo exportado de tu tienda para actualizar stock y descripciones por SKU.</p>
+                        <p class="text-xs text-zinc-400 mt-1">Sube el archivo exportado de tu tienda para actualizar stock por variante y descripciones.</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="file" id="archivoTiendaActualizar" accept=".xlsx, .xls, .csv" class="w-full text-xs text-zinc-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700">
@@ -324,16 +324,16 @@
             </div>
 
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
-                <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">Vista Previa de Filas (Variantes separadas por color)</h3>
+                <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">Vista Previa de Filas (Variantes independientes por color)</h3>
                 <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-left text-xs">
                         <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
                             <tr>
                                 <th class="pb-2 px-2">Nombre del producto</th>
                                 <th class="pb-2 px-2">Precio</th>
-                                <th class="pb-2 px-2">Stock</th>
+                                <th class="pb-2 px-2">Stock Variante</th>
                                 <th class="pb-2 px-2">Visibilidad</th>
-                                <th class="pb-2 px-2">SKU</th>
+                                <th class="pb-2 px-2">SKU de Variante</th>
                                 <th class="pb-2 px-2">Variante #1 (Color)</th>
                                 <th class="pb-2 px-2">Categoría</th>
                             </tr>
