@@ -1,6 +1,5 @@
-// Sistema ROWAN - Gestión Integral Avanzada con Autorreparación de Datos
+// Sistema ROWAN - Gestión Integral Avanzada con Integración Tienda Negocio
 
-// 1. Inicialización y Autoreparación de Datos de Respaldo
 function inicializarSistema() {
     if (!localStorage.getItem('rowan_categorias')) {
         localStorage.setItem('rowan_categorias', JSON.stringify([
@@ -32,13 +31,11 @@ function inicializarSistema() {
         ]));
     }
 
-    // AUTOREPARACIÓN: Si hay compras con proveedores o productos huérfanos, los reconstruimos automáticamente
     try {
         let proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
 
-        // Si hay compras registradas pero no hay proveedores, los recreamos desde las compras
         if (proveedores.length === 0 && compras.length > 0) {
             let provMap = new Map();
             compras.forEach(c => {
@@ -52,7 +49,6 @@ function inicializarSistema() {
             localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
         }
 
-        // Asegurar que cada producto tenga un proveedor_id válido
         if (productos.length > 0 && proveedores.length > 0) {
             const primerProvId = proveedores[0].id;
             productos.forEach(p => {
@@ -70,7 +66,7 @@ function inicializarSistema() {
 inicializarSistema();
 
 window.cambiarPestana = function(pestana) {
-    const secciones = ["productos", "compras", "proveedores", "categorias", "nombres", "colores"];
+    const secciones = ["productos", "compras", "proveedores", "categorias", "nombres", "colores", "tiendanube"];
     secciones.forEach(sec => {
         const el = document.getElementById(`seccion-${sec}`);
         if (el) el.classList.add("hidden");
@@ -91,6 +87,8 @@ window.cambiarPestana = function(pestana) {
         cargarProveedoresFicha();
     } else if (pestana === 'productos') {
         cargarProductos();
+    } else if (pestana === 'tiendanube') {
+        cargarVistaPreviaTiendanube();
     }
 };
 
@@ -207,7 +205,7 @@ window.cargarProductosParaComprar = function() {
         const prodsProv = productos.filter(p => p.proveedor_id === proveedorId);
 
         if (prodsProv.length === 0) {
-            contenedor.innerHTML = `<p class="text-xs text-zinc-400">Este proveedor no tiene productos cargados en el catálogo. Carga productos primero en la solapa Catálogo.</p>`;
+            contenedor.innerHTML = `<p class="text-xs text-zinc-400">Este proveedor no tiene productos cargados en el catálogo.</p>`;
             return;
         }
 
@@ -378,7 +376,7 @@ window.registrarCompraRealizada = function() {
 }
 
 window.eliminarCompra = function(compraId) {
-    if (!confirm("¿Estás seguro de eliminar esta compra? Se descontará el stock sumado en su momento y se eliminará del historial.")) return;
+    if (!confirm("¿Estás seguro de eliminar esta compra? Se descontará el stock sumado y se eliminará del historial.")) return;
 
     try {
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
@@ -446,7 +444,7 @@ function cargarHistorialCompras() {
         });
 
         if (comprasFiltradas.length === 0) {
-            container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No se encontraron compras con ese criterio de búsqueda.</p>`;
+            container.innerHTML = `<p class="text-xs text-zinc-500 text-center py-4">No se encontraron compras con ese criterio.</p>`;
             return;
         }
 
@@ -517,14 +515,13 @@ function cargarHistorialCompras() {
     }
 }
 
-// --- CÁLCULO AUTOMÁTICO DE PRECIO Y ESTILOS (AMARILLO / CELESTE) ---
+// --- CÁLCULO DE PRECIOS Y GESTIÓN DE COLORES / NOMBRES ---
 window.calcularPrecioAutomatico = function() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
     const precioInput = document.getElementById("precio_venta");
     
     const precioAuto = (costoProv + costoPack) * 2.2;
-    
     precioInput.value = precioAuto > 0 ? Math.round(precioAuto) : "";
     verificarModoPrecio();
 }
@@ -547,7 +544,6 @@ window.verificarModoPrecio = function() {
     }
 }
 
-// --- GESTIÓN DE COLORES MÚLTIPLES ---
 function actualizarCheckboxesColoresProducto(coloresSeleccionados = []) {
     const container = document.getElementById("coloresCheckboxesContainer");
     if (!container) return;
@@ -555,7 +551,7 @@ function actualizarCheckboxesColoresProducto(coloresSeleccionados = []) {
     try {
         const colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
         if (colores.length === 0) {
-            container.innerHTML = `<span class="text-xs text-zinc-500">No hay colores cargados en la pestaña Colores.</span>`;
+            container.innerHTML = `<span class="text-xs text-zinc-500">No hay colores cargados.</span>`;
             return;
         }
 
@@ -570,7 +566,7 @@ function actualizarCheckboxesColoresProducto(coloresSeleccionados = []) {
             `;
         });
     } catch (e) {
-        console.error("Error al actualizar checkboxes de colores", e);
+        console.error(e);
     }
 }
 
@@ -582,7 +578,7 @@ function guardarColorNuevo() {
     try {
         let colores = JSON.parse(localStorage.getItem('rowan_colores')) || [];
         if (colores.some(c => c.toLowerCase() === nuevoColor.toLowerCase())) {
-            alert("Este color ya existe en la lista.");
+            alert("Este color ya existe.");
             return;
         }
         colores.push(nuevoColor);
@@ -633,7 +629,6 @@ function cargarColoresGestion() {
     }
 }
 
-// --- NOMBRES ---
 function actualizarSelectNombresProducto() {
     const select = document.getElementById("nombre_hombre_select");
     if (!select) return;
@@ -652,170 +647,17 @@ function actualizarSelectNombresProducto() {
             }
         });
 
-        select.innerHTML = '<option value="">Automático (Siguiente disponible en orden)</option>';
+        select.innerHTML = '<option value="">Automático (Siguiente disponible)</option>';
         nombres.forEach(nom => {
             const usado = nombresUsadosSet.has(nom.toUpperCase());
             const etiqueta = usado ? `${nom} (USADO / OCUPADO)` : nom;
             select.innerHTML += `<option value="${nom}" ${usado ? 'class="text-zinc-500 bg-zinc-900"' : ''}>${etiqueta}</option>`;
         });
     } catch (e) {
-        console.error("Error al actualizar nombres de producto", e);
-    }
-}
-
-// --- PROVEEDORES ---
-function guardarProveedor() {
-    const editId = document.getElementById("prov_edit_id").value;
-    const nombre = document.getElementById("prov_nombre").value.trim();
-    const contacto = document.getElementById("prov_contacto").value.trim();
-    const web = document.getElementById("prov_web").value.trim();
-
-    if (!nombre) return alert("El nombre es obligatorio.");
-
-    try {
-        let provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
-        if (editId) {
-            const prov = provs.find(p => p.id === editId);
-            if (prov) {
-                prov.nombre = nombre;
-                prov.contacto = contacto;
-                prov.web = web;
-            }
-            alert("¡Proveedor actualizado con éxito!");
-        } else {
-            const nuevoProv = { id: 'prov_' + Date.now(), nombre, contacto, web };
-            provs.push(nuevoProv);
-            alert("¡Proveedor guardado con éxito!");
-        }
-
-        localStorage.setItem('rowan_proveedores', JSON.stringify(provs));
-        cancelarEdicionProveedor();
-        cargarSelectores();
-        cargarProveedoresFicha();
-        cargarProductos();
-    } catch (err) {
-        alert("Error al guardar proveedor: " + err.message);
-    }
-}
-
-window.editarProveedor = function(id) {
-    try {
-        const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
-        const prov = provs.find(p => p.id === id);
-        if (prov) {
-            document.getElementById("prov_edit_id").value = prov.id;
-            document.getElementById("prov_nombre").value = prov.nombre;
-            document.getElementById("prov_contacto").value = prov.contacto || '';
-            document.getElementById("prov_web").value = prov.web || '';
-            document.getElementById("form-proveedor-titulo").textContent = "Editar Proveedor";
-            document.getElementById("btn-guardar-prov").textContent = "Actualizar Proveedor";
-            document.getElementById("btn-cancelar-prov").classList.remove("hidden");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } catch (e) {
         console.error(e);
     }
 }
 
-window.cancelarEdicionProveedor = function() {
-    document.getElementById("proveedorForm").reset();
-    document.getElementById("prov_edit_id").value = "";
-    document.getElementById("form-proveedor-titulo").textContent = "Nuevo Proveedor";
-    document.getElementById("btn-guardar-prov").textContent = "Guardar Proveedor";
-    document.getElementById("btn-cancelar-prov").classList.add("hidden");
-}
-
-window.filtrarProveedores = function() {
-    cargarProveedoresFicha();
-}
-
-// --- CATEGORÍAS ---
-function guardarCategoria() {
-    const editId = document.getElementById("cat_edit_id").value;
-    const nombre = document.getElementById("cat_nombre").value.trim();
-
-    if (!nombre) return alert("El nombre de la categoría es obligatorio.");
-
-    try {
-        let cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
-        if (editId) {
-            const cat = cats.find(c => c.id === editId);
-            if (cat) cat.nombre = nombre;
-            alert("¡Categoría actualizada con éxito!");
-        } else {
-            if (cats.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
-                alert("La categoría ya existe.");
-                return;
-            }
-            cats.push({ id: 'cat_' + Date.now(), nombre });
-            alert("¡Categoría creada con éxito!");
-        }
-
-        localStorage.setItem('rowan_categorias', JSON.stringify(cats));
-        cancelarEdicionCategoria();
-        cargarSelectores();
-        cargarCategoriasGestion();
-        cargarProductos();
-    } catch (err) {
-        alert("Error al guardar categoría: " + err.message);
-    }
-}
-
-window.editarCategoria = function(id) {
-    try {
-        const cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
-        const cat = cats.find(c => c.id === id);
-        if (cat) {
-            document.getElementById("cat_edit_id").value = cat.id;
-            document.getElementById("cat_nombre").value = cat.nombre;
-            document.getElementById("form-cat-titulo").textContent = "Editar Categoría";
-            document.getElementById("btn-guardar-cat").textContent = "Actualizar Categoría";
-            document.getElementById("btn-cancelar-cat").classList.remove("hidden");
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-window.cancelarEdicionCategoria = function() {
-    document.getElementById("categoriaForm").reset();
-    document.getElementById("cat_edit_id").value = "";
-    document.getElementById("form-cat-titulo").textContent = "Agregar Nueva Categoría";
-    document.getElementById("btn-guardar-cat").textContent = "Crear Categoría";
-    document.getElementById("btn-cancelar-cat").classList.add("hidden");
-}
-
-function cargarCategoriasGestion() {
-    const listado = document.getElementById("categoriasListado");
-    if (!listado) return;
-
-    try {
-        const cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
-        if (cats.length === 0) {
-            listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay categorías.</li>`;
-            return;
-        }
-
-        listado.innerHTML = "";
-        cats.forEach(c => {
-            const codigoSku = c.nombre.substring(0, 3).toUpperCase();
-            listado.innerHTML += `
-                <li class="py-3 text-sm font-medium text-zinc-200 flex justify-between items-center border-b border-zinc-800/50">
-                    <div>
-                        <span>${c.nombre}</span>
-                        <span class="ml-2 text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">SKU: (${codigoSku})</span>
-                    </div>
-                    <button onclick="editarCategoria('${c.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
-                </li>
-            `;
-        });
-    } catch (e) {
-        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay categorías.</li>`;
-    }
-}
-
-// --- NOMBRES ---
 function guardarNombreNuevo() {
     const inputNombre = document.getElementById("nombre_nuevo").value.trim().toUpperCase();
     if (!inputNombre) return;
@@ -887,7 +729,7 @@ function cargarNombresGestion() {
 window.procesarArchivoNombres = function() {
     const input = document.getElementById("archivoNombres");
     if (!input.files || input.files.length === 0) {
-        alert("Por favor selecciona un archivo (.xlsx, .csv o .txt).");
+        alert("Selecciona un archivo (.xlsx, .csv o .txt).");
         return;
     }
 
@@ -913,7 +755,6 @@ window.procesarArchivoNombres = function() {
                         }
                     }
                 });
-
                 guardarNombresImportados(nuevosNombres);
             } catch (err) {
                 alert("Error al leer el archivo Excel: " + err.message);
@@ -926,7 +767,6 @@ window.procesarArchivoNombres = function() {
                 const contenido = e.target.result;
                 const lineas = contenido.split(/\r\n|\n/);
                 let nuevosNombres = [];
-
                 lineas.forEach(linea => {
                     let columnas = linea.split(/[,;\t]/);
                     let val = columnas[0] ? columnas[0].replace(/["']/g, "").trim().toUpperCase() : "";
@@ -934,7 +774,6 @@ window.procesarArchivoNombres = function() {
                         nuevosNombres.push(val);
                     }
                 });
-
                 guardarNombresImportados(nuevosNombres);
             } catch (err) {
                 alert("Error al leer el archivo: " + err.message);
@@ -950,14 +789,158 @@ function guardarNombresImportados(nuevosNombres) {
         localStorage.setItem('rowan_indice_nombre', '0');
         cargarNombresGestion();
         actualizarSelectNombresProducto();
-        alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente respetando el orden del archivo!`);
+        alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente!`);
         document.getElementById("archivoNombres").value = "";
     } else {
-        alert("No se encontraron nombres válidos en el archivo.");
+        alert("No se encontraron nombres válidos.");
     }
 }
 
-// --- PRODUCTOS: CREAR, EDITAR, ELIMINAR, BUSCAR, VISIBILIDAD ---
+// --- PROVEEDORES Y PRODUCTOS ---
+function guardarProveedor() {
+    const editId = document.getElementById("prov_edit_id").value;
+    const nombre = document.getElementById("prov_nombre").value.trim();
+    const contacto = document.getElementById("prov_contacto").value.trim();
+    const web = document.getElementById("prov_web").value.trim();
+
+    if (!nombre) return alert("El nombre es obligatorio.");
+
+    try {
+        let provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
+        if (editId) {
+            const prov = provs.find(p => p.id === editId);
+            if (prov) { prov.nombre = nombre; prov.contacto = contacto; prov.web = web; }
+            alert("¡Proveedor actualizado con éxito!");
+        } else {
+            const nuevoProv = { id: 'prov_' + Date.now(), nombre, contacto, web };
+            provs.push(nuevoProv);
+            alert("¡Proveedor guardado con éxito!");
+        }
+
+        localStorage.setItem('rowan_proveedores', JSON.stringify(provs));
+        cancelarEdicionProveedor();
+        cargarSelectores();
+        cargarProveedoresFicha();
+        cargarProductos();
+    } catch (err) {
+        alert("Error al guardar proveedor: " + err.message);
+    }
+}
+
+window.editarProveedor = function(id) {
+    try {
+        const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
+        const prov = provs.find(p => p.id === id);
+        if (prov) {
+            document.getElementById("prov_edit_id").value = prov.id;
+            document.getElementById("prov_nombre").value = prov.nombre;
+            document.getElementById("prov_contacto").value = prov.contacto || '';
+            document.getElementById("prov_web").value = prov.web || '';
+            document.getElementById("form-proveedor-titulo").textContent = "Editar Proveedor";
+            document.getElementById("btn-guardar-prov").textContent = "Actualizar Proveedor";
+            document.getElementById("btn-cancelar-prov").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+window.cancelarEdicionProveedor = function() {
+    document.getElementById("proveedorForm").reset();
+    document.getElementById("prov_edit_id").value = "";
+    document.getElementById("form-proveedor-titulo").textContent = "Nuevo Proveedor";
+    document.getElementById("btn-guardar-prov").textContent = "Guardar Proveedor";
+    document.getElementById("btn-cancelar-prov").classList.add("hidden");
+}
+
+window.filtrarProveedores = function() { cargarProveedoresFicha(); }
+
+function guardarCategoria() {
+    const editId = document.getElementById("cat_edit_id").value;
+    const nombre = document.getElementById("cat_nombre").value.trim();
+
+    if (!nombre) return alert("El nombre es obligatorio.");
+
+    try {
+        let cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
+        if (editId) {
+            const cat = cats.find(c => c.id === editId);
+            if (cat) cat.nombre = nombre;
+            alert("¡Categoría actualizada!");
+        } else {
+            if (cats.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+                alert("La categoría ya existe.");
+                return;
+            }
+            cats.push({ id: 'cat_' + Date.now(), nombre });
+            alert("¡Categoría creada!");
+        }
+
+        localStorage.setItem('rowan_categorias', JSON.stringify(cats));
+        cancelarEdicionCategoria();
+        cargarSelectores();
+        cargarCategoriasGestion();
+        cargarProductos();
+    } catch (err) {
+        alert("Error al guardar categoría: " + err.message);
+    }
+}
+
+window.editarCategoria = function(id) {
+    try {
+        const cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
+        const cat = cats.find(c => c.id === id);
+        if (cat) {
+            document.getElementById("cat_edit_id").value = cat.id;
+            document.getElementById("cat_nombre").value = cat.nombre;
+            document.getElementById("form-cat-titulo").textContent = "Editar Categoría";
+            document.getElementById("btn-guardar-cat").textContent = "Actualizar Categoría";
+            document.getElementById("btn-cancelar-cat").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+window.cancelarEdicionCategoria = function() {
+    document.getElementById("categoriaForm").reset();
+    document.getElementById("cat_edit_id").value = "";
+    document.getElementById("form-cat-titulo").textContent = "Agregar Nueva Categoría";
+    document.getElementById("btn-guardar-cat").textContent = "Crear Categoría";
+    document.getElementById("btn-cancelar-cat").classList.add("hidden");
+}
+
+function cargarCategoriasGestion() {
+    const listado = document.getElementById("categoriasListado");
+    if (!listado) return;
+
+    try {
+        const cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
+        if (cats.length === 0) {
+            listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">No hay categorías.</li>`;
+            return;
+        }
+
+        listado.innerHTML = "";
+        cats.forEach(c => {
+            const codigoSku = c.nombre.substring(0, 3).toUpperCase();
+            listado.innerHTML += `
+                <li class="py-3 text-sm font-medium text-zinc-200 flex justify-between items-center border-b border-zinc-800/50">
+                    <div>
+                        <span>${c.nombre}</span>
+                        <span class="ml-2 text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">SKU: (${codigoSku})</span>
+                    </div>
+                    <button onclick="editarCategoria('${c.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
+                </li>
+            `;
+        });
+    } catch (e) {
+        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">Error.</li>`;
+    }
+}
+
 function procesarNuevoProducto() {
     const editId = document.getElementById("prod_edit_id").value;
     const proveedorId = document.getElementById("proveedor_select").value;
@@ -980,10 +963,7 @@ function procesarNuevoProducto() {
     const ancho = parseFloat(document.getElementById("ancho").value) || null;
     const prof = parseFloat(document.getElementById("prof").value) || null;
 
-    if (!proveedorId) {
-        alert("Por favor selecciona un proveedor.");
-        return;
-    }
+    if (!proveedorId) return alert("Selecciona un proveedor.");
 
     try {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
@@ -1006,7 +986,7 @@ function procesarNuevoProducto() {
                 prod.profundidad_cm = prof;
             }
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert("¡Artículo actualizado con éxito!");
+            alert("¡Artículo actualizado!");
             cancelarEdicionProducto();
         } else {
             const mismaCat = productos.filter(p => p.categoria === categoria);
@@ -1056,7 +1036,7 @@ function procesarNuevoProducto() {
         cargarNombresGestion();
         actualizarSelectNombresProducto();
     } catch (err) {
-        alert("Error al guardar producto: " + err.message);
+        alert("Error: " + err.message);
     }
 }
 
@@ -1106,7 +1086,7 @@ window.cancelarEdicionProducto = function() {
 }
 
 window.eliminarProducto = function(id) {
-    if (!confirm("¿Estás seguro de eliminar este producto del catálogo?")) return;
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
     try {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         productos = productos.filter(p => p.id !== id);
@@ -1130,7 +1110,7 @@ window.toggleVisibilidadProducto = function(id, checkbox) {
             cargarProductos();
         }
     } catch (e) {
-        console.error("Error al cambiar visibilidad", e);
+        console.error(e);
     }
 }
 
@@ -1150,13 +1130,11 @@ window.actualizarCostoProducto = function(prodId, nuevoCosto) {
             cargarProductos();
         }
     } catch (e) {
-        console.error("Error al actualizar costo", e);
+        console.error(e);
     }
 }
 
-window.filtrarProductos = function() {
-    cargarProductos();
-}
+window.filtrarProductos = function() { cargarProductos(); }
 
 function cargarProductos() {
     const tbody = document.getElementById("productTableBody");
@@ -1169,9 +1147,8 @@ function cargarProductos() {
         const productosFiltrados = productos.filter(p => {
             const matchNombre = (p.nombre_rowan || '').toLowerCase().includes(filtro);
             const matchDescProv = (p.descripcion_proveedor || '').toLowerCase().includes(filtro);
-            const matchDescArt = (p.descripcion_articulo || "").toLowerCase().includes(filtro);
             const matchSku = (p.sku || '').toLowerCase().includes(filtro);
-            return matchNombre || matchDescProv || matchDescArt || matchSku;
+            return matchNombre || matchDescProv || matchSku;
         });
 
         if (productosFiltrados.length === 0) {
@@ -1191,20 +1168,14 @@ function cargarProductos() {
                 let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
                 medidasTexto.push(`[${dims} cm]`);
             }
-            const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : '<span class="text-zinc-600">No especificado</span>';
-
-            const esManual = p.tipo_precio === "manual";
-            const clasePrecio = esManual 
-                ? 'bg-sky-950/60 text-sky-300 border border-sky-800 px-2 py-1 rounded' 
-                : 'bg-amber-950/60 text-amber-300 border border-amber-800 px-2 py-1 rounded';
-            const tituloTipo = esManual ? 'Precio Manual' : 'Precio Automático (x2.2)';
+            const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : 'No especificado';
 
             const badgeVisibilidad = esVisible 
-                ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700/80 px-2 py-1 rounded text-emerald-400 text-xs font-semibold" title="Visible en Tienda">
+                ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700 px-2 py-1 rounded text-emerald-400 text-xs font-semibold">
                        <input type="checkbox" checked onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-emerald-600 text-emerald-500 focus:ring-0">
                        <span>Visible</span>
                    </label>`
-                : `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-rose-950/80 border border-rose-700/80 px-2 py-1 rounded text-rose-400 text-xs font-semibold" title="Oculto en Tienda">
+                : `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-rose-950/80 border border-rose-700 px-2 py-1 rounded text-rose-400 text-xs font-semibold">
                        <input type="checkbox" onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-rose-600 text-rose-500 focus:ring-0">
                        <span>No visible</span>
                    </label>`;
@@ -1216,9 +1187,7 @@ function cargarProductos() {
                     <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
                     <td class="py-3 font-semibold font-mono text-amber-400">${stockActual} u.</td>
                     <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
-                    <td class="py-3">
-                        <span class="font-semibold text-xs ${clasePrecio}" title="${tituloTipo}">$${p.precio_venta.toLocaleString()}</span>
-                    </td>
+                    <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span></td>
                     <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
                     <td class="py-3 text-right">
                         <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
@@ -1228,11 +1197,10 @@ function cargarProductos() {
             `;
         });
     } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No hay productos cargados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">Error.</td></tr>`;
     }
 }
 
-// --- FICHAS DE PROVEEDORES ---
 function cargarProveedoresFicha() {
     const container = document.getElementById("proveedoresListado");
     if (!container) return;
@@ -1245,7 +1213,7 @@ function cargarProveedoresFicha() {
         const provsFiltrados = provs.filter(p => p.nombre.toLowerCase().includes(filtroProv));
 
         if (provsFiltrados.length === 0) {
-            container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
+            container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados.</p>`;
             return;
         }
 
@@ -1253,61 +1221,114 @@ function cargarProveedoresFicha() {
         provsFiltrados.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
             let filasTabla = prodsProv.length > 0 
-                ? prodsProv.map(prod => {
-                    const esManual = prod.tipo_precio === "manual";
-                    const clasePrecio = esManual ? 'text-sky-300' : 'text-amber-300';
-                    const stockVal = prod.stock !== undefined ? prod.stock : 0;
-                    return `
-                        <tr class="border-b border-zinc-900 hover:bg-zinc-900/40 transition">
-                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
-                            <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
-                            <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-xs text-zinc-500 font-normal">(${prod.color || 'Único'})</span></td>
-                            <td class="py-2.5 px-3 font-mono text-amber-400">${stockVal} u.</td>
-                            <td class="py-2.5 px-3">
-                                <div class="flex items-center gap-1">
-                                    <span class="text-zinc-400 text-xs">$</span>
-                                    <input type="number" value="${prod.costo_proveedor}" onchange="actualizarCostoProducto('${prod.id}', this.value)" class="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-xs text-emerald-400 font-semibold focus:outline-none">
-                                </div>
-                            </td>
-                            <td class="py-2.5 px-3 font-semibold ${clasePrecio}">$${prod.precio_venta.toLocaleString()}</td>
-                        </tr>
-                    `;
-                }).join('')
-                : `<tr><td colspan="6" class="py-4 text-center text-zinc-500 text-xs">Aún no tiene productos cargados de este proveedor.</td></tr>`;
+                ? prodsProv.map(prod => `
+                    <tr class="border-b border-zinc-900">
+                        <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
+                        <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
+                        <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan}</td>
+                        <td class="py-2.5 px-3 font-mono text-amber-400">${prod.stock || 0} u.</td>
+                        <td class="py-2.5 px-3 font-semibold">$${prod.precio_venta.toLocaleString()}</td>
+                    </tr>
+                `).join('')
+                : `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Sin productos cargados.</td></tr>`;
 
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h3 class="font-bold text-zinc-100 text-base">${prov.nombre}</h3>
-                            <p class="text-xs text-zinc-400">Contacto: ${prov.contacto || 'No especificado'} | Web: ${prov.web || 'No especificada'}</p>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded text-zinc-300">${prodsProv.length} productos</span>
-                            <button onclick="editarProveedor('${prov.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
-                        </div>
-                    </div>
+                    <h3 class="font-bold text-zinc-100 text-base">${prov.nombre}</h3>
                     <div class="mt-3 overflow-x-auto">
                         <table class="w-full text-left text-xs">
                             <thead class="border-b border-zinc-800 text-zinc-500 uppercase">
                                 <tr>
                                     <th class="pb-2 px-3">SKU</th>
-                                    <th class="pb-2 px-3">Descripción Proveedor</th>
+                                    <th class="pb-2 px-3">Descripción</th>
                                     <th class="pb-2 px-3">Artículo ROWAN</th>
                                     <th class="pb-2 px-3">Stock</th>
-                                    <th class="pb-2 px-3">Costo Prov.</th>
                                     <th class="pb-2 px-3">Venta</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${filasTabla}
-                            </tbody>
+                            <tbody>${filasTabla}</tbody>
                         </table>
                     </div>
                 </div>
             `;
         });
     } catch (e) {
-        container.innerHTML = `<p class="text-zinc-500 text-sm">No hay proveedores registrados todavía.</p>`;
+        container.innerHTML = `<p class="text-zinc-500 text-sm">Error.</p>`;
+    }
+}
+
+// --- MÓDULO TIENDA NEGOCIO ---
+function obtenerDatosTiendanubeFormato() {
+    const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+    let filasTiendanube = [];
+
+    productos.forEach(p => {
+        const visibilidadText = (p.visible !== false) ? "Visible" : "Oculto";
+        const descripcionCompleta = (p.descripcion_articulo ? p.descripcion_articulo + " - " : "") + "Proveedor: " + (p.descripcion_proveedor || '');
+        
+        filasTiendanube.push({
+            "Hash": "",
+            "Nombre del producto": p.nombre_rowan || "",
+            "Precio": p.precio_venta || 0,
+            "Oferta": "",
+            "Stock": p.stock || 0,
+            "Visibilidad (Visible o Oculto)": visibilidadText,
+            "Descripción": descripcionCompleta,
+            "SKU": p.sku || "",
+            "Peso en KG": p.peso_kg || 0,
+            "Alto en CM": p.alto_cm || "",
+            "Ancho en CM": p.ancho_cm || "",
+            "Profundidad en CM": p.profundidad_cm || "",
+            "Nombre de variante #1": p.color ? "Color" : "",
+            "Opción de variante #1": p.color || "",
+            "Nombre de variante #2": "",
+            "Opción de variante #2": "",
+            "Nombre de variante #3": "",
+            "Opción de variante #3": "",
+            "Categorías > Subcategorías > … > Subcategorías": p.categoria || ""
+        });
+    });
+
+    return filasTiendanube;
+}
+
+function cargarVistaPreviaTiendanube() {
+    const tbody = document.getElementById("tablaTiendanubeBody");
+    if (!tbody) return;
+
+    const datos = obtenerDatosTiendanubeFormato();
+    if (datos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">No hay productos en el catálogo para exportar.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+    datos.forEach(row => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-zinc-800/40 transition">
+                <td class="py-2.5 px-2 font-semibold text-zinc-200">${row["Nombre del producto"]}</td>
+                <td class="py-2.5 px-2 text-emerald-400 font-semibold">$${row["Precio"].toLocaleString()}</td>
+                <td class="py-2.5 px-2 font-mono text-amber-400">${row["Stock"]} u.</td>
+                <td class="py-2.5 px-2 text-zinc-300">${row["Visibilidad (Visible o Oculto)"]}</td>
+                <td class="py-2.5 px-2 font-mono text-zinc-400">${row["SKU"]}</td>
+                <td class="py-2.5 px-2 text-zinc-300">${row["Opción de variante #1"] || '-'}</td>
+                <td class="py-2.5 px-2 text-zinc-300">${row["Categorías > Subcategorías > … > Subcategorías"]}</td>
+            </tr>
+        `;
+    });
+}
+
+window.exportarExcelTiendanube = function() {
+    const datos = obtenerDatosTiendanubeFormato();
+    if (datos.length === 0) return alert("No hay productos para exportar.");
+
+    try {
+        const worksheet = XLSX.utils.json_to_sheet(datos);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Productos");
+        
+        XLSX.writeFile(workbook, "catalogo_tienda_negocio_rowan.xlsx");
+    } catch (err) {
+        alert("Error al exportar archivo Excel: " + err.message);
     }
 }
