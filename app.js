@@ -1,4 +1,4 @@
-// Sistema ROWAN - Gestión Integral con División de Colores e Importación de Tienda Negocio
+// Sistema ROWAN - Gestión Integral con Stock Independiente por Color y Tienda Negocio
 
 function inicializarSistema() {
     if (!localStorage.getItem('rowan_categorias')) {
@@ -49,15 +49,21 @@ function inicializarSistema() {
             localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
         }
 
-        if (productos.length > 0 && proveedores.length > 0) {
-            const primerProvId = proveedores[0].id;
-            productos.forEach(p => {
-                if (!p.proveedor_id) {
-                    p.proveedor_id = primerProvId;
+        // Migración a stock por color si el producto tiene stock numérico antiguo
+        productos.forEach(p => {
+            if (!p.stock_colores || typeof p.stock_colores !== 'object') {
+                p.stock_colores = {};
+                const stockAntiguo = typeof p.stock === 'number' ? p.stock : 0;
+                if (p.color) {
+                    const coloresArr = p.color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+                    coloresArr.forEach((col, idx) => {
+                        // Si hay stock antiguo, se lo asignamos al primer color, los demás en 0
+                        p.stock_colores[col] = idx === 0 ? stockAntiguo : 0;
+                    });
                 }
-            });
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-        }
+            }
+        });
+        localStorage.setItem('rowan_productos', JSON.stringify(productos));
     } catch (err) {
         console.error("Error en autorreparación:", err);
     }
@@ -173,7 +179,7 @@ function cargarSelectores() {
     }
 }
 
-// --- MÓDULO DE COMPRAS ---
+// --- MÓDULO DE COMPRAS CON CANTIDADES INDEPENDIENTES POR COLOR ---
 function cargarSelectoresCompras() {
     try {
         const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
@@ -211,44 +217,47 @@ window.cargarProductosParaComprar = function() {
 
         let html = `
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-3">
-                <h3 class="text-xs font-semibold uppercase text-zinc-400">Productos del Proveedor</h3>
-                <input type="text" id="buscadorItemsCompra" oninput="filtrarProductosCompra()" placeholder="Buscar producto en esta compra..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-72">
+                <h3 class="text-xs font-semibold uppercase text-zinc-400">Productos del Proveedor (Compra por Color)</h3>
+                <input type="text" id="buscadorItemsCompra" oninput="filtrarProductosCompra()" placeholder="Buscar producto..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-72">
             </div>
-            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
                 <table class="w-full text-left text-xs">
                     <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
                         <tr>
-                            <th class="pb-2 px-2">Comprar</th>
-                            <th class="pb-2 px-2">SKU</th>
+                            <th class="pb-2 px-2">SKU Base</th>
                             <th class="pb-2 px-2">Artículo ROWAN</th>
-                            <th class="pb-2 px-2">Descripción Prov.</th>
+                            <th class="pb-2 px-2">Color / Variante</th>
                             <th class="pb-2 px-2">Stock Actual</th>
                             <th class="pb-2 px-2">Costo Unit. Prov. ($)</th>
-                            <th class="pb-2 px-2">Cantidad</th>
+                            <th class="pb-2 px-2">Cantidad a Comprar</th>
                         </tr>
                     </thead>
                     <tbody id="tablaItemsCompraBody" class="divide-y divide-zinc-800/60">
         `;
 
         prodsProv.forEach(p => {
-            const prodIdSafe = p.id || p.sku;
-            html += `
-                <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-desc="${(p.descripcion_proveedor || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
-                    <td class="py-3 px-2">
-                        <input type="checkbox" name="item_compra_check" value="${prodIdSafe}" class="rounded bg-zinc-950 border-zinc-700 text-emerald-500 focus:ring-0">
-                    </td>
-                    <td class="py-3 px-2 font-mono text-zinc-400">${p.sku}</td>
-                    <td class="py-3 px-2 font-semibold text-zinc-200">${p.nombre_rowan} <span class="text-[10px] text-zinc-500 font-normal block">${p.color || 'Único'}</span></td>
-                    <td class="py-3 px-2 text-zinc-400">${p.descripcion_proveedor}</td>
-                    <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${p.stock !== undefined ? p.stock : 0}</td>
-                    <td class="py-3 px-2">
-                        <input type="number" id="costo_compra_${prodIdSafe}" value="${p.costo_proveedor || 0}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
-                    </td>
-                    <td class="py-3 px-2">
-                        <input type="number" id="cant_compra_${prodIdSafe}" value="1" min="1" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
-                    </td>
-                </tr>
-            `;
+            const prodId = p.id;
+            let coloresArr = p.color ? p.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
+
+            coloresArr.forEach(colorItem => {
+                const safeKey = `${prodId}_${colorItem.replace(/\s+/g, '_')}`;
+                const stockColorActual = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
+
+                html += `
+                    <tr class="item-fila-compra" data-nombre="${(p.nombre_rowan || '').toLowerCase()}" data-sku="${(p.sku || '').toLowerCase()}">
+                        <td class="py-3 px-2 font-mono text-zinc-400">${p.sku}</td>
+                        <td class="py-3 px-2 font-semibold text-zinc-200">${p.nombre_rowan} <span class="text-[10px] text-zinc-500 font-normal block">${p.descripcion_proveedor}</span></td>
+                        <td class="py-3 px-2 text-emerald-400 font-bold">${colorItem}</td>
+                        <td class="py-3 px-2 font-mono text-amber-400 font-semibold">${stockColorActual} u.</td>
+                        <td class="py-3 px-2">
+                            <input type="number" id="costo_compra_${safeKey}" value="${p.costo_proveedor || 0}" class="w-24 bg-zinc-950 border border-zinc-700 rounded p-1 text-emerald-400 font-semibold focus:outline-none">
+                        </td>
+                        <td class="py-3 px-2">
+                            <input type="number" id="cant_compra_${safeKey}" value="0" min="0" data-prodid="${prodId}" data-color="${colorItem}" class="input-cant-compra w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-zinc-200 focus:outline-none">
+                        </td>
+                    </tr>
+                `;
+            });
         });
 
         html += `
@@ -261,7 +270,7 @@ window.cargarProductosParaComprar = function() {
                     <input type="number" id="envio_compra" value="0" class="w-32 bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                 </div>
                 <button type="button" onclick="registrarCompraRealizada()" class="w-full md:w-auto bg-emerald-600 text-white font-medium px-6 py-2.5 rounded text-sm hover:bg-emerald-500 transition">
-                    Registrar Compra y Actualizar Stock
+                    Registrar Compra y Actualizar Stock por Color
                 </button>
             </div>
         `;
@@ -280,9 +289,8 @@ window.filtrarProductosCompra = function() {
     
     filas.forEach(fila => {
         const nombre = fila.dataset.nombre || "";
-        const desc = fila.dataset.desc || "";
         const sku = fila.dataset.sku || "";
-        if (nombre.includes(filtro) || desc.includes(filtro) || sku.includes(filtro)) {
+        if (nombre.includes(filtro) || sku.includes(filtro)) {
             fila.style.display = "";
         } else {
             fila.style.display = "none";
@@ -294,9 +302,7 @@ window.registrarCompraRealizada = function() {
     const proveedorId = document.getElementById("compra_proveedor_select").value;
     if (!proveedorId) return alert("Selecciona un proveedor.");
 
-    const checkboxes = document.querySelectorAll('input[name="item_compra_check"]:checked');
-    if (checkboxes.length === 0) return alert("Selecciona al menos un producto para comprar.");
-
+    const inputsCantidad = document.querySelectorAll('.input-cant-compra');
     const costoEnvio = parseFloat(document.getElementById("envio_compra").value) || 0;
 
     try {
@@ -311,18 +317,19 @@ window.registrarCompraRealizada = function() {
         let itemsComprados = [];
         let subtotalProductos = 0;
 
-        checkboxes.forEach(cb => {
-            const prodRefId = cb.value;
-            const inputCant = document.getElementById(`cant_compra_${prodRefId}`);
-            const inputCosto = document.getElementById(`costo_compra_${prodRefId}`);
-
-            const cantidad = inputCant ? (parseInt(inputCant.value) || 0) : 0;
-            const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
-
+        inputsCantidad.forEach(input => {
+            const cantidad = parseInt(input.value) || 0;
             if (cantidad > 0) {
-                let prod = productos.find(p => p.id === prodRefId || p.sku === prodRefId);
+                const prodId = input.dataset.prodid;
+                const colorItem = input.dataset.color;
+                const safeKey = `${prodId}_${colorItem.replace(/\s+/g, '_')}`;
+                const inputCosto = document.getElementById(`costo_compra_${safeKey}`);
+                const nuevoCostoProv = inputCosto ? (parseFloat(inputCosto.value) || 0) : 0;
+
+                let prod = productos.find(p => p.id === prodId);
                 if (prod) {
-                    prod.stock = (prod.stock || 0) + cantidad;
+                    if (!prod.stock_colores) prod.stock_colores = {};
+                    prod.stock_colores[colorItem] = (prod.stock_colores[colorItem] || 0) + cantidad;
                     prod.costo_proveedor = nuevoCostoProv;
                     if (prod.tipo_precio !== "manual") {
                         prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
@@ -332,7 +339,7 @@ window.registrarCompraRealizada = function() {
                     itemsComprados.push({
                         id: prod.id,
                         sku: prod.sku,
-                        nombre: prod.nombre_rowan,
+                        nombre: `${prod.nombre_rowan} (${colorItem})`,
                         cantidad,
                         costoUnitario: nuevoCostoProv
                     });
@@ -341,7 +348,7 @@ window.registrarCompraRealizada = function() {
         });
 
         if (itemsComprados.length === 0) {
-            return alert("La cantidad de los productos seleccionados debe ser mayor a 0.");
+            return alert("Debes ingresar al menos una cantidad mayor a 0 en algún color.");
         }
 
         const numeroCompra = String(compras.length + 1).padStart(3, '0');
@@ -376,7 +383,7 @@ window.registrarCompraRealizada = function() {
 }
 
 window.eliminarCompra = function(compraId) {
-    if (!confirm("¿Estás seguro de eliminar esta compra? Se descontará el stock sumado y se eliminará del historial.")) return;
+    if (!confirm("¿Estás seguro de eliminar esta compra? Se descontará el stock de cada color sumado en su momento.")) return;
 
     try {
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
@@ -390,8 +397,13 @@ window.eliminarCompra = function(compraId) {
         if (Array.isArray(compra.items)) {
             compra.items.forEach(item => {
                 const prod = productos.find(p => p.id === item.id || p.sku === item.sku);
-                if (prod) {
-                    prod.stock = Math.max(0, (prod.stock || 0) - (item.cantidad || 0));
+                if (prod && prod.stock_colores) {
+                    // Extraer color del nombre guardado o buscar
+                    for (let col in prod.stock_colores) {
+                        if (item.nombre && item.nombre.includes(col)) {
+                            prod.stock_colores[col] = Math.max(0, prod.stock_colores[col] - (item.cantidad || 0));
+                        }
+                    }
                 }
             });
         }
@@ -401,7 +413,7 @@ window.eliminarCompra = function(compraId) {
         localStorage.setItem('rowan_compras', JSON.stringify(compras));
         localStorage.setItem('rowan_productos', JSON.stringify(productos));
 
-        alert("¡Compra eliminada y stock actualizado correctamente!");
+        alert("¡Compra eliminada y stock por color actualizado correctamente!");
         cargarProductos();
         cargarProveedoresFicha();
         cargarHistorialCompras();
@@ -410,9 +422,7 @@ window.eliminarCompra = function(compraId) {
     }
 }
 
-window.filtrarHistorialCompras = function() {
-    cargarHistorialCompras();
-}
+window.filtrarHistorialCompras = function() { cargarHistorialCompras(); }
 
 function cargarHistorialCompras() {
     const container = document.getElementById("historialComprasContainer");
@@ -470,23 +480,17 @@ function cargarHistorialCompras() {
                 `;
             });
 
-            const numDisplay = compra.numero ? `#${compra.numero}` : '#001';
-            const provNombre = compra.proveedor || 'Proveedor';
-            const fechaCompra = compra.fecha || '';
-            const costoEnvio = compra.envio || 0;
-            const montoTotal = compra.total || 0;
-
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 pb-2 border-b border-zinc-900 gap-2">
                         <div>
-                            <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">${numDisplay}</span>
-                            <span class="font-bold text-zinc-100 text-sm mr-3">Proveedor: <span class="text-emerald-400">${provNombre}</span></span>
-                            <span class="text-xs text-zinc-400">${fechaCompra}</span>
+                            <span class="text-xs font-mono bg-zinc-900 text-emerald-400 px-2 py-0.5 rounded border border-zinc-800 mr-2">#${compra.numero}</span>
+                            <span class="font-bold text-zinc-100 text-sm mr-3">Proveedor: <span class="text-emerald-400">${compra.proveedor}</span></span>
+                            <span class="text-xs text-zinc-400">${compra.fecha}</span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-xs text-zinc-400">Envío: $${costoEnvio.toLocaleString()}</span>
-                            <span class="text-sm font-bold text-emerald-400">Total: $${montoTotal.toLocaleString()}</span>
+                            <span class="text-xs text-zinc-400">Envío: $${(compra.envio || 0).toLocaleString()}</span>
+                            <span class="text-sm font-bold text-emerald-400">Total: $${(compra.total || 0).toLocaleString()}</span>
                             <button onclick="eliminarCompra('${compra.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition ml-2">Eliminar Compra</button>
                         </div>
                     </div>
@@ -495,22 +499,19 @@ function cargarHistorialCompras() {
                             <thead class="text-[10px] uppercase text-zinc-500 border-b border-zinc-900">
                                 <tr>
                                     <th class="pb-1.5 px-2">SKU</th>
-                                    <th class="pb-1.5 px-2">Artículo</th>
+                                    <th class="pb-1.5 px-2">Artículo (Color)</th>
                                     <th class="pb-1.5 px-2">Cantidad</th>
                                     <th class="pb-1.5 px-2">Costo Unit.</th>
                                     <th class="pb-1.5 px-2">Subtotal</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${itemsHtml}
-                            </tbody>
+                            <tbody>${itemsHtml}</tbody>
                         </table>
                     </div>
                 </div>
             `;
         });
     } catch (e) {
-        console.error(e);
         container.innerHTML = `<p class="text-xs text-zinc-500">Error al cargar historial.</p>`;
     }
 }
@@ -625,7 +626,7 @@ function cargarColoresGestion() {
             `;
         });
     } catch (e) {
-        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">Error al cargar colores.</li>`;
+        listado.innerHTML = `<li class="py-3 text-sm text-zinc-500">Error.</li>`;
     }
 }
 
@@ -984,6 +985,12 @@ function procesarNuevoProducto() {
                 prod.alto_cm = alto;
                 prod.ancho_cm = ancho;
                 prod.profundidad_cm = prof;
+
+                // Asegurar stock_colores para nuevos colores
+                if (!prod.stock_colores) prod.stock_colores = {};
+                coloresSeleccionados.forEach(c => {
+                    if (prod.stock_colores[c] === undefined) prod.stock_colores[c] = 0;
+                });
             }
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
             alert("¡Artículo actualizado!");
@@ -1013,12 +1020,16 @@ function procesarNuevoProducto() {
 
             const nombreRowan = `${nombreBaseSingular} ${nombreElegido}`;
 
+            let stockColoresObj = {};
+            coloresSeleccionados.forEach(c => { stockColoresObj[c] = 0; });
+
             const nuevoProd = {
                 id: 'prod_' + Date.now(),
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
                 descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
+                stock_colores: stockColoresObj,
                 costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
-                tipo_precio: tipoPrecio, stock: 0, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
+                tipo_precio: tipoPrecio, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
                 profundidad_cm: prof, visible: true
             };
 
@@ -1114,6 +1125,24 @@ window.toggleVisibilidadProducto = function(id, checkbox) {
     }
 }
 
+window.actualizarStockColor = function(prodId, colorName, nuevoStock) {
+    const stockNum = parseInt(nuevoStock, 10);
+    if (isNaN(stockNum) || stockNum < 0) return;
+
+    try {
+        let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const prod = productos.find(p => p.id === prodId);
+        if (prod) {
+            if (!prod.stock_colores) prod.stock_colores = {};
+            prod.stock_colores[colorName] = stockNum;
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            cargarProductos();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 window.actualizarCostoProducto = function(prodId, nuevoCosto) {
     const costoNum = parseFloat(nuevoCosto);
     if (isNaN(costoNum) || costoNum < 0) return;
@@ -1159,42 +1188,43 @@ function cargarProductos() {
         tbody.innerHTML = "";
         productosFiltrados.forEach(p => {
             const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0);
-            const stockActual = p.stock !== undefined ? p.stock : 0;
             const esVisible = p.visible !== false;
 
-            let medidasTexto = [];
-            if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
-            if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
-                let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
-                medidasTexto.push(`[${dims} cm]`);
-            }
-            const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : 'No especificado';
+            let coloresArr = p.color ? p.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
 
-            const badgeVisibilidad = esVisible 
-                ? `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-emerald-950/80 border border-emerald-700 px-2 py-1 rounded text-emerald-400 text-xs font-semibold">
-                       <input type="checkbox" checked onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-emerald-600 text-emerald-500 focus:ring-0">
-                       <span>Visible</span>
-                   </label>`
-                : `<label class="inline-flex items-center gap-1.5 cursor-pointer bg-rose-950/80 border border-rose-700 px-2 py-1 rounded text-rose-400 text-xs font-semibold">
-                       <input type="checkbox" onchange="toggleVisibilidadProducto('${p.id}', this)" class="rounded bg-zinc-950 border-rose-600 text-rose-500 focus:ring-0">
-                       <span>No visible</span>
-                   </label>`;
+            coloresArr.forEach((colorItem, idx) => {
+                const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
+                const skuVariante = coloresArr.length > 1 ? `${p.sku}-${colorItem.substring(0, 3).toUpperCase()}` : p.sku;
 
-            tbody.innerHTML += `
-                <tr class="hover:bg-zinc-800/50 transition">
-                    <td class="py-3 text-center">${badgeVisibilidad}</td>
-                    <td class="py-3 font-mono text-xs text-zinc-400">${p.sku}</td>
-                    <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-zinc-500 block">${p.color ? p.color + ' | ' : ''}${p.categoria}</span></td>
-                    <td class="py-3 font-semibold font-mono text-amber-400">${stockActual} u.</td>
-                    <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
-                    <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span></td>
-                    <td class="py-3 text-xs text-zinc-400 font-mono">${infoMedidas}</td>
-                    <td class="py-3 text-right">
-                        <button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
-                        <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
-                    </td>
-                </tr>
-            `;
+                let medidasTexto = [];
+                if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
+                if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
+                    let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
+                    medidasTexto.push(`[${dims} cm]`);
+                }
+                const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : 'No especificado';
+
+                const badgeVisibilidad = (idx === 0 && esVisible) 
+                    ? `<span class="bg-emerald-950/80 border border-emerald-700 px-2 py-0.5 rounded text-emerald-400 text-[10px] font-semibold">Visible</span>`
+                    : (idx === 0 ? `<span class="bg-rose-950/80 border border-rose-700 px-2 py-0.5 rounded text-rose-400 text-[10px] font-semibold">Oculto</span>` : ``);
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-zinc-800/50 transition">
+                        <td class="py-3 text-center">${badgeVisibilidad}</td>
+                        <td class="py-3 font-mono text-xs text-zinc-400">${skuVariante}</td>
+                        <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-emerald-400 font-semibold block">Color: ${colorItem}</span></td>
+                        <td class="py-3 font-mono text-amber-400">
+                            <input type="number" value="${stockColorVal}" min="0" onchange="actualizarStockColor('${p.id}', '${colorItem}', this.value)" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-amber-400 font-semibold focus:outline-none">
+                        </td>
+                        <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
+                        <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span></td>
+                        <td class="py-3 text-right">
+                            ${idx === 0 ? `<button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
+                                          <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>` : '<span class="text-[10px] text-zinc-500">Variante</span>'}
+                        </td>
+                    </tr>
+                `;
+            });
         });
     } catch (e) {
         tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-zinc-500">Error.</td></tr>`;
@@ -1220,17 +1250,29 @@ function cargarProveedoresFicha() {
         container.innerHTML = "";
         provsFiltrados.forEach(prov => {
             const prodsProv = productos.filter(p => p.proveedor_id === prov.id);
-            let filasTabla = prodsProv.length > 0 
-                ? prodsProv.map(prod => `
-                    <tr class="border-b border-zinc-900">
-                        <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${prod.sku}</td>
-                        <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
-                        <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan}</td>
-                        <td class="py-2.5 px-3 font-mono text-amber-400">${prod.stock || 0} u.</td>
-                        <td class="py-2.5 px-3 font-semibold">$${prod.precio_venta.toLocaleString()}</td>
-                    </tr>
-                `).join('')
-                : `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Sin productos cargados.</td></tr>`;
+            let filasTabla = "";
+
+            prodsProv.forEach(prod => {
+                let coloresArr = prod.color ? prod.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
+                coloresArr.forEach(colorItem => {
+                    const stockColorVal = (prod.stock_colores && prod.stock_colores[colorItem] !== undefined) ? prod.stock_colores[colorItem] : 0;
+                    const skuVariante = coloresArr.length > 1 ? `${prod.sku}-${colorItem.substring(0, 3).toUpperCase()}` : prod.sku;
+
+                    filasTabla += `
+                        <tr class="border-b border-zinc-900">
+                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${skuVariante}</td>
+                            <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
+                            <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-emerald-400">(${colorItem})</span></td>
+                            <td class="py-2.5 px-3 font-mono text-amber-400">${stockColorVal} u.</td>
+                            <td class="py-2.5 px-3 font-semibold">$${prod.precio_venta.toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+            });
+
+            if (!filasTabla) {
+                filasTabla = `<tr><td colspan="5" class="py-4 text-center text-zinc-500 text-xs">Sin productos cargados.</td></tr>`;
+            }
 
             container.innerHTML += `
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-lg mb-4">
@@ -1241,7 +1283,7 @@ function cargarProveedoresFicha() {
                                 <tr>
                                     <th class="pb-2 px-3">SKU</th>
                                     <th class="pb-2 px-3">Descripción</th>
-                                    <th class="pb-2 px-3">Artículo ROWAN</th>
+                                    <th class="pb-2 px-3">Artículo ROWAN (Color)</th>
                                     <th class="pb-2 px-3">Stock</th>
                                     <th class="pb-2 px-3">Venta</th>
                                 </tr>
@@ -1257,7 +1299,7 @@ function cargarProveedoresFicha() {
     }
 }
 
-// --- MÓDULO TIENDA NEGOCIO (CON DIVISIÓN DE FILAS POR COLOR) ---
+// --- MÓDULO TIENDA NEGOCIO ---
 function obtenerDatosTiendanubeFormato() {
     const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
     let filasTiendanube = [];
@@ -1272,14 +1314,14 @@ function obtenerDatosTiendanubeFormato() {
         }
 
         if (coloresList.length > 1) {
-            // Dividir en una fila por cada color
-            coloresList.forEach((colIndividual, index) => {
+            coloresList.forEach(colIndividual => {
+                const stockColorVal = (p.stock_colores && p.stock_colores[colIndividual] !== undefined) ? p.stock_colores[colIndividual] : 0;
                 filasTiendanube.push({
                     "Hash": "",
                     "Nombre del producto": p.nombre_rowan || "",
                     "Precio": p.precio_venta || 0,
                     "Oferta": "",
-                    "Stock": p.stock || 0,
+                    "Stock": stockColorVal,
                     "Visibilidad (Visible o Oculto)": visibilidadText,
                     "Descripción": descripcionCompleta,
                     "SKU": `${p.sku}-${colIndividual.substring(0, 3).toUpperCase()}`,
@@ -1298,12 +1340,14 @@ function obtenerDatosTiendanubeFormato() {
             });
         } else {
             const unicoColor = coloresList.length === 1 ? coloresList[0] : "";
+            const stockColorVal = unicoColor && p.stock_colores ? (p.stock_colores[unicoColor] || 0) : (p.stock_colores ? Object.values(p.stock_colores)[0] || 0 : 0);
+
             filasTiendanube.push({
                 "Hash": "",
                 "Nombre del producto": p.nombre_rowan || "",
                 "Precio": p.precio_venta || 0,
                 "Oferta": "",
-                "Stock": p.stock || 0,
+                "Stock": stockColorVal,
                 "Visibilidad (Visible o Oculto)": visibilidadText,
                 "Descripción": descripcionCompleta,
                 "SKU": p.sku || "",
@@ -1341,7 +1385,7 @@ function cargarVistaPreviaTiendanube() {
             <tr class="hover:bg-zinc-800/40 transition">
                 <td class="py-2.5 px-2 font-semibold text-zinc-200">${row["Nombre del producto"]}</td>
                 <td class="py-2.5 px-2 text-emerald-400 font-semibold">$${row["Precio"].toLocaleString()}</td>
-                <td class="py-2.5 px-2 font-mono text-amber-400">${row["Stock"]} u.</td>
+                <td class="py-2.5 px-2 font-mono text-amber-400 font-bold">${row["Stock"]} u.</td>
                 <td class="py-2.5 px-2 text-zinc-300">${row["Visibilidad (Visible o Oculto)"]}</td>
                 <td class="py-2.5 px-2 font-mono text-zinc-400">${row["SKU"]}</td>
                 <td class="py-2.5 px-2 text-zinc-300">${row["Opción de variante #1"] || '-'}</td>
@@ -1399,13 +1443,24 @@ window.procesarActualizacionTienda = function() {
                 const skuArchivo = String(row["SKU"] || "").trim();
                 const stockArchivo = parseInt(row["Stock"], 10);
                 const descArchivo = String(row["Descripción"] || "").trim();
+                const varianteColor = String(row["Opción de variante #1"] || "").trim();
 
                 if (skuArchivo) {
                     productos.forEach(p => {
-                        // Comprobamos si el SKU coincide directamente o con sufijo de variante
-                        if (p.sku === skuArchivo || skuArchivo.startsWith(p.sku)) {
+                        if (!p.stock_colores) p.stock_colores = {};
+
+                        // Coincidencia por SKU de variante o SKU base + color
+                        const matchSkuExacto = p.sku === skuArchivo || skuArchivo.startsWith(p.sku + '-');
+                        
+                        if (matchSkuExacto) {
                             if (!isNaN(stockArchivo)) {
-                                p.stock = stockArchivo;
+                                if (varianteColor) {
+                                    p.stock_colores[varianteColor] = stockArchivo;
+                                } else {
+                                    // Si no tiene variante especificada, se actualiza el primer color
+                                    const primerColor = Object.keys(p.stock_colores)[0] || "Único";
+                                    p.stock_colores[primerColor] = stockArchivo;
+                                }
                             }
                             if (descArchivo) {
                                 p.descripcion_articulo = descArchivo;
@@ -1417,7 +1472,7 @@ window.procesarActualizacionTienda = function() {
             });
 
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert(`¡Actualización exitosa! Se actualizaron datos en ${actualizadosCount} registros según el archivo.`);
+            alert(`¡Actualización exitosa! Se actualizaron stocks y descripciones en ${actualizadosCount} variantes.`);
             cargarProductos();
             cargarVistaPreviaTiendanube();
             input.value = "";
