@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ROWAN - Dashboard de Gestión</title>
+    <!-- Librerías SheetJS para lectura y exportación de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -23,6 +24,7 @@
                     <button onclick="cambiarPestana('categorias')" id="btn-categorias" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Categorías</button>
                     <button onclick="cambiarPestana('nombres')" id="btn-nombres" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Nombres</button>
                     <button onclick="cambiarPestana('colores')" id="btn-colores" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Colores</button>
+                    <button onclick="cambiarPestana('tiendanube')" id="btn-tiendanube" class="px-3 py-1.5 text-xs font-medium rounded text-zinc-400 hover:text-zinc-200 transition">Tienda Negocio</button>
                 </nav>
                 <div id="status" class="text-xs px-3 py-1 bg-emerald-950 border border-emerald-800 rounded text-emerald-400">
                     Sistema Local Activo
@@ -144,7 +146,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN NUEVA: MÓDULO DE COMPRAS -->
+        <!-- SECCIÓN: MÓDULO DE COMPRAS -->
         <div id="seccion-compras" class="hidden space-y-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Registrar Nueva Compra a Proveedor</h2>
@@ -156,13 +158,11 @@
                         </select>
                     </div>
                 </div>
-
                 <div id="contenedor-items-compra" class="space-y-4">
                     <p class="text-xs text-zinc-500">Selecciona un proveedor para ver sus productos disponibles y registrar cantidades y costos de compra.</p>
                 </div>
             </div>
 
-            <!-- Historial de Compras -->
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                     <h2 class="text-lg font-semibold text-zinc-200">Historial de Compras Realizadas</h2>
@@ -174,7 +174,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 2: PROVEEDORES -->
+        <!-- SECCIÓN: PROVEEDORES -->
         <div id="seccion-proveedores" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg lg:col-span-1 h-fit">
                 <h2 id="form-proveedor-titulo" class="text-lg font-semibold mb-4 text-zinc-200">Nuevo Proveedor</h2>
@@ -213,7 +213,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 3: CATEGORÍAS -->
+        <!-- SECCIÓN: CATEGORÍAS -->
         <div id="seccion-categorias" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
                 <h2 id="form-cat-titulo" class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nueva Categoría</h2>
@@ -241,7 +241,7 @@
             </div>
         </div>
 
-        <!-- SECCIÓN 4: NOMBRES PARA PRODUCTOS -->
+        <!-- SECCIÓN: NOMBRES -->
         <div id="seccion-nombres" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div class="space-y-6">
                 <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
@@ -256,27 +256,23 @@
                         </button>
                     </form>
                 </div>
-
                 <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
-                    <h2 class="text-lg font-semibold mb-4 text-zinc-200">Subir Listado de Nombres (Excel .xlsx / CSV / TXT)</h2>
-                    <p class="text-xs text-zinc-400 mb-3">Sube tu archivo de Excel (.xlsx), CSV o TXT. Tomará los nombres respetando el orden exacto.</p>
-                    <input type="file" id="archivoNombres" accept=".xlsx, .xls, .csv, .txt, .text" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 mb-4">
+                    <h2 class="text-lg font-semibold mb-4 text-zinc-200">Subir Listado de Nombres (Excel / CSV / TXT)</h2>
+                    <input type="file" id="archivoNombres" accept=".xlsx, .xls, .csv, .txt" class="w-full text-xs text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 mb-4">
                     <button type="button" onclick="procesarArchivoNombres()" class="w-full bg-emerald-600 text-white font-medium py-2.5 rounded text-sm hover:bg-emerald-500 transition">
                         Importar y Actualizar Orden
                     </button>
                 </div>
             </div>
-
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Listado de Nombres Disponibles</h2>
-                <p class="text-xs text-zinc-400 mb-3">El sistema tachará los nombres que ya hayan sido utilizados en productos.</p>
                 <ul id="nombresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
             </div>
         </div>
 
-        <!-- SECCIÓN 5: GESTIÓN DE COLORES -->
+        <!-- SECCIÓN: COLORES -->
         <div id="seccion-colores" class="hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg h-fit">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Agregar Nuevo Color</h2>
@@ -292,10 +288,44 @@
             </div>
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
                 <h2 class="text-lg font-semibold mb-4 text-zinc-200">Colores Disponibles</h2>
-                <p class="text-xs text-zinc-400 mb-3">Estos colores aparecerán como opciones múltiples al cargar tus productos.</p>
                 <ul id="coloresListado" class="divide-y divide-zinc-800 text-zinc-300 max-h-96 overflow-y-auto">
                     <!-- Dinámico -->
                 </ul>
+            </div>
+        </div>
+
+        <!-- SECCIÓN NUEVA: TIENDA NEGOCIO -->
+        <div id="seccion-tiendanube" class="hidden space-y-6">
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-zinc-200">Formato Oficial Tienda Negocio</h2>
+                    <p class="text-xs text-zinc-400 mt-1">Exporta tu catálogo actual de ROWAN adaptado exactamente a la plantilla de importación masiva.</p>
+                </div>
+                <button onclick="exportarExcelTiendanube()" class="bg-emerald-600 text-white font-medium px-5 py-2.5 rounded text-sm hover:bg-emerald-500 transition flex items-center gap-2">
+                    📥 Descargar Excel para Tienda Negocio
+                </button>
+            </div>
+
+            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
+                <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">Vista Previa de la Tabla</h3>
+                <div class="overflow-x-auto max-h-[500px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
+                            <tr>
+                                <th class="pb-2 px-2">Nombre del producto</th>
+                                <th class="pb-2 px-2">Precio</th>
+                                <th class="pb-2 px-2">Stock</th>
+                                <th class="pb-2 px-2">Visibilidad</th>
+                                <th class="pb-2 px-2">SKU</th>
+                                <th class="pb-2 px-2">Variante #1 (Color)</th>
+                                <th class="pb-2 px-2">Categoría</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaTiendanubeBody" class="divide-y divide-zinc-800/60 text-zinc-300">
+                            <!-- Dinámico -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
