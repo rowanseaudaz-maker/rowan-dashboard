@@ -1,4 +1,4 @@
-// Sistema ROWAN - Gestión Integral Avanzada con Integración Tienda Negocio
+// Sistema ROWAN - Gestión Integral con División de Colores e Importación de Tienda Negocio
 
 function inicializarSistema() {
     if (!localStorage.getItem('rowan_categorias')) {
@@ -1257,7 +1257,7 @@ function cargarProveedoresFicha() {
     }
 }
 
-// --- MÓDULO TIENDA NEGOCIO ---
+// --- MÓDULO TIENDA NEGOCIO (CON DIVISIÓN DE FILAS POR COLOR) ---
 function obtenerDatosTiendanubeFormato() {
     const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
     let filasTiendanube = [];
@@ -1266,27 +1266,60 @@ function obtenerDatosTiendanubeFormato() {
         const visibilidadText = (p.visible !== false) ? "Visible" : "Oculto";
         const descripcionCompleta = (p.descripcion_articulo ? p.descripcion_articulo + " - " : "") + "Proveedor: " + (p.descripcion_proveedor || '');
         
-        filasTiendanube.push({
-            "Hash": "",
-            "Nombre del producto": p.nombre_rowan || "",
-            "Precio": p.precio_venta || 0,
-            "Oferta": "",
-            "Stock": p.stock || 0,
-            "Visibilidad (Visible o Oculto)": visibilidadText,
-            "Descripción": descripcionCompleta,
-            "SKU": p.sku || "",
-            "Peso en KG": p.peso_kg || 0,
-            "Alto en CM": p.alto_cm || "",
-            "Ancho en CM": p.ancho_cm || "",
-            "Profundidad en CM": p.profundidad_cm || "",
-            "Nombre de variante #1": p.color ? "Color" : "",
-            "Opción de variante #1": p.color || "",
-            "Nombre de variante #2": "",
-            "Opción de variante #2": "",
-            "Nombre de variante #3": "",
-            "Opción de variante #3": "",
-            "Categorías > Subcategorías > … > Subcategorías": p.categoria || ""
-        });
+        let coloresList = [];
+        if (p.color) {
+            coloresList = p.color.split(',').map(c => c.trim()).filter(c => c.length > 0);
+        }
+
+        if (coloresList.length > 1) {
+            // Dividir en una fila por cada color
+            coloresList.forEach((colIndividual, index) => {
+                filasTiendanube.push({
+                    "Hash": "",
+                    "Nombre del producto": p.nombre_rowan || "",
+                    "Precio": p.precio_venta || 0,
+                    "Oferta": "",
+                    "Stock": p.stock || 0,
+                    "Visibilidad (Visible o Oculto)": visibilidadText,
+                    "Descripción": descripcionCompleta,
+                    "SKU": `${p.sku}-${colIndividual.substring(0, 3).toUpperCase()}`,
+                    "Peso en KG": p.peso_kg || 0,
+                    "Alto en CM": p.alto_cm || "",
+                    "Ancho en CM": p.ancho_cm || "",
+                    "Profundidad en CM": p.profundidad_cm || "",
+                    "Nombre de variante #1": "Color",
+                    "Opción de variante #1": colIndividual,
+                    "Nombre de variante #2": "",
+                    "Opción de variante #2": "",
+                    "Nombre de variante #3": "",
+                    "Opción de variante #3": "",
+                    "Categorías > Subcategorías > … > Subcategorías": p.categoria || ""
+                });
+            });
+        } else {
+            const unicoColor = coloresList.length === 1 ? coloresList[0] : "";
+            filasTiendanube.push({
+                "Hash": "",
+                "Nombre del producto": p.nombre_rowan || "",
+                "Precio": p.precio_venta || 0,
+                "Oferta": "",
+                "Stock": p.stock || 0,
+                "Visibilidad (Visible o Oculto)": visibilidadText,
+                "Descripción": descripcionCompleta,
+                "SKU": p.sku || "",
+                "Peso en KG": p.peso_kg || 0,
+                "Alto en CM": p.alto_cm || "",
+                "Ancho en CM": p.ancho_cm || "",
+                "Profundidad en CM": p.profundidad_cm || "",
+                "Nombre de variante #1": unicoColor ? "Color" : "",
+                "Opción de variante #1": unicoColor,
+                "Nombre de variante #2": "",
+                "Opción de variante #2": "",
+                "Nombre de variante #3": "",
+                "Opción de variante #3": "",
+                "Categorías > Subcategorías > … > Subcategorías": p.categoria || ""
+            });
+        }
     });
 
     return filasTiendanube;
@@ -1330,5 +1363,72 @@ window.exportarExcelTiendanube = function() {
         XLSX.writeFile(workbook, "catalogo_tienda_negocio_rowan.xlsx");
     } catch (err) {
         alert("Error al exportar archivo Excel: " + err.message);
+    }
+}
+
+window.procesarActualizacionTienda = function() {
+    const input = document.getElementById("archivoTiendaActualizar");
+    if (!input.files || input.files.length === 0) {
+        alert("Por favor selecciona el archivo exportado de Tienda Negocio (.xlsx o .csv).");
+        return;
+    }
+
+    const file = input.files[0];
+    const reader = new FileReader();
+    const extension = file.name.split('.').pop().toLowerCase();
+
+    reader.onload = function(e) {
+        try {
+            let jsonRows = [];
+            if (extension === 'xlsx' || extension === 'xls') {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+            } else {
+                const contenido = e.target.result;
+                const workbook = XLSX.read(contenido, { type: 'string' });
+                const firstSheetName = workbook.SheetNames[0];
+                jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
+            }
+
+            let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+            let actualizadosCount = 0;
+
+            jsonRows.forEach(row => {
+                const skuArchivo = String(row["SKU"] || "").trim();
+                const stockArchivo = parseInt(row["Stock"], 10);
+                const descArchivo = String(row["Descripción"] || "").trim();
+
+                if (skuArchivo) {
+                    productos.forEach(p => {
+                        // Comprobamos si el SKU coincide directamente o con sufijo de variante
+                        if (p.sku === skuArchivo || skuArchivo.startsWith(p.sku)) {
+                            if (!isNaN(stockArchivo)) {
+                                p.stock = stockArchivo;
+                            }
+                            if (descArchivo) {
+                                p.descripcion_articulo = descArchivo;
+                            }
+                            actualizadosCount++;
+                        }
+                    });
+                }
+            });
+
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            alert(`¡Actualización exitosa! Se actualizaron datos en ${actualizadosCount} registros según el archivo.`);
+            cargarProductos();
+            cargarVistaPreviaTiendanube();
+            input.value = "";
+        } catch (err) {
+            alert("Error al procesar el archivo: " + err.message);
+        }
+    };
+
+    if (extension === 'xlsx' || extension === 'xls') {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file);
     }
 }
