@@ -294,20 +294,37 @@
             </div>
         </div>
 
-        <!-- SECCIÓN NUEVA: TIENDA NEGOCIO -->
+        <!-- SECCIÓN: TIENDA NEGOCIO -->
         <div id="seccion-tiendanube" class="hidden space-y-6">
-            <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 class="text-lg font-semibold text-zinc-200">Formato Oficial Tienda Negocio</h2>
-                    <p class="text-xs text-zinc-400 mt-1">Exporta tu catálogo actual de ROWAN adaptado exactamente a la plantilla de importación masiva.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Exportar -->
+                <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-zinc-200">Exportar a Tienda Negocio</h2>
+                        <p class="text-xs text-zinc-400 mt-1">Genera el Excel dividiendo cada color en filas separadas con su respectiva variante.</p>
+                    </div>
+                    <button onclick="exportarExcelTiendanube()" class="bg-emerald-600 text-white font-medium px-5 py-2.5 rounded text-sm hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+                        📥 Descargar Excel para Tienda Negocio
+                    </button>
                 </div>
-                <button onclick="exportarExcelTiendanube()" class="bg-emerald-600 text-white font-medium px-5 py-2.5 rounded text-sm hover:bg-emerald-500 transition flex items-center gap-2">
-                    📥 Descargar Excel para Tienda Negocio
-                </button>
+
+                <!-- Importar / Actualizar Stock y Descripciones -->
+                <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg flex flex-col justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-zinc-200">Actualizar desde Tienda Negocio</h2>
+                        <p class="text-xs text-zinc-400 mt-1">Sube el archivo exportado de tu tienda para actualizar stock y descripciones por SKU.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="file" id="archivoTiendaActualizar" accept=".xlsx, .xls, .csv" class="w-full text-xs text-zinc-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700">
+                        <button onclick="procesarActualizacionTienda()" class="bg-sky-600 text-white font-medium px-4 py-2 rounded text-xs hover:bg-sky-500 transition whitespace-nowrap">
+                            Actualizar
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-lg">
-                <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">Vista Previa de la Tabla</h3>
+                <h3 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">Vista Previa de Filas (Variantes separadas por color)</h3>
                 <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-left text-xs">
                         <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
