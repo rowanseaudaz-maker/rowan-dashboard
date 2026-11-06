@@ -49,7 +49,7 @@ function inicializarSistema() {
             localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
         }
 
-        // Migración a stock por color si el producto tiene stock numérico antiguo
+        // Migración a stock por color
         productos.forEach(p => {
             if (!p.stock_colores || typeof p.stock_colores !== 'object') {
                 p.stock_colores = {};
@@ -57,11 +57,11 @@ function inicializarSistema() {
                 if (p.color) {
                     const coloresArr = p.color.split(',').map(c => c.trim()).filter(c => c.length > 0);
                     coloresArr.forEach((col, idx) => {
-                        // Si hay stock antiguo, se lo asignamos al primer color, los demás en 0
                         p.stock_colores[col] = idx === 0 ? stockAntiguo : 0;
                     });
                 }
             }
+            if (p.costo_envio === undefined) p.costo_envio = 0;
         });
         localStorage.setItem('rowan_productos', JSON.stringify(productos));
     } catch (err) {
@@ -179,7 +179,7 @@ function cargarSelectores() {
     }
 }
 
-// --- MÓDULO DE COMPRAS CON CANTIDADES INDEPENDIENTES POR COLOR ---
+// --- MÓDULO DE COMPRAS ---
 function cargarSelectoresCompras() {
     try {
         const provs = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
@@ -224,7 +224,7 @@ window.cargarProductosParaComprar = function() {
                 <table class="w-full text-left text-xs">
                     <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
                         <tr>
-                            <th class="pb-2 px-2">SKU Base</th>
+                            <th class="pb-2 px-2">SKU Único</th>
                             <th class="pb-2 px-2">Artículo ROWAN</th>
                             <th class="pb-2 px-2">Color / Variante</th>
                             <th class="pb-2 px-2">Stock Actual</th>
@@ -266,7 +266,7 @@ window.cargarProductosParaComprar = function() {
             </div>
             <div class="mt-4 pt-4 border-t border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center gap-2 w-full md:w-auto">
-                    <label class="text-xs uppercase text-zinc-400">Costo de Envío ($):</label>
+                    <label class="text-xs uppercase text-zinc-400">Costo de Envío Global ($):</label>
                     <input type="number" id="envio_compra" value="0" class="w-32 bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                 </div>
                 <button type="button" onclick="registrarCompraRealizada()" class="w-full md:w-auto bg-emerald-600 text-white font-medium px-6 py-2.5 rounded text-sm hover:bg-emerald-500 transition">
@@ -303,7 +303,7 @@ window.registrarCompraRealizada = function() {
     if (!proveedorId) return alert("Selecciona un proveedor.");
 
     const inputsCantidad = document.querySelectorAll('.input-cant-compra');
-    const costoEnvio = parseFloat(document.getElementById("envio_compra").value) || 0;
+    const costoEnvioGlobal = parseFloat(document.getElementById("envio_compra").value) || 0;
 
     try {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
@@ -331,14 +331,16 @@ window.registrarCompraRealizada = function() {
                     if (!prod.stock_colores) prod.stock_colores = {};
                     prod.stock_colores[colorItem] = (prod.stock_colores[colorItem] || 0) + cantidad;
                     prod.costo_proveedor = nuevoCostoProv;
+
                     if (prod.tipo_precio !== "manual") {
-                        prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
+                        const totalUnitario = (prod.costo_proveedor || 0) + (prod.costo_packaging || 0) + (prod.costo_envio || 0);
+                        prod.precio_venta = Math.round(totalUnitario * 2.2);
                     }
 
                     subtotalProductos += (nuevoCostoProv * cantidad);
                     itemsComprados.push({
                         id: prod.id,
-                        sku: prod.sku,
+                        sku: prod.sku, // Mismo SKU único sin importar color
                         nombre: `${prod.nombre_rowan} (${colorItem})`,
                         cantidad,
                         costoUnitario: nuevoCostoProv
@@ -352,7 +354,7 @@ window.registrarCompraRealizada = function() {
         }
 
         const numeroCompra = String(compras.length + 1).padStart(3, '0');
-        const montoTotal = subtotalProductos + costoEnvio;
+        const montoTotal = subtotalProductos + costoEnvioGlobal;
         const fechaActual = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
         const nuevaCompra = {
@@ -361,7 +363,7 @@ window.registrarCompraRealizada = function() {
             proveedor: provNombre,
             numero: numeroCompra,
             fecha: fechaActual,
-            envio: costoEnvio,
+            envio: costoEnvioGlobal,
             total: montoTotal,
             items: itemsComprados
         };
@@ -398,7 +400,6 @@ window.eliminarCompra = function(compraId) {
             compra.items.forEach(item => {
                 const prod = productos.find(p => p.id === item.id || p.sku === item.sku);
                 if (prod && prod.stock_colores) {
-                    // Extraer color del nombre guardado o buscar
                     for (let col in prod.stock_colores) {
                         if (item.nombre && item.nombre.includes(col)) {
                             prod.stock_colores[col] = Math.max(0, prod.stock_colores[col] - (item.cantidad || 0));
@@ -520,9 +521,10 @@ function cargarHistorialCompras() {
 window.calcularPrecioAutomatico = function() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
+    const costoEnvio = parseFloat(document.getElementById("costo_envio").value) || 0;
     const precioInput = document.getElementById("precio_venta");
     
-    const precioAuto = (costoProv + costoPack) * 2.2;
+    const precioAuto = (costoProv + costoPack + costoEnvio) * 2.2;
     precioInput.value = precioAuto > 0 ? Math.round(precioAuto) : "";
     verificarModoPrecio();
 }
@@ -530,10 +532,11 @@ window.calcularPrecioAutomatico = function() {
 window.verificarModoPrecio = function() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
+    const costoEnvio = parseFloat(document.getElementById("costo_envio").value) || 0;
     const precioInput = document.getElementById("precio_venta");
     const precioActual = parseFloat(precioInput.value) || 0;
     
-    const precioAuto = (costoProv + costoPack) * 2.2;
+    const precioAuto = (costoProv + costoPack + costoEnvio) * 2.2;
     const esAutomatico = Math.abs(precioActual - precioAuto) < 1;
 
     if (esAutomatico) {
@@ -727,76 +730,6 @@ function cargarNombresGestion() {
     }
 }
 
-window.procesarArchivoNombres = function() {
-    const input = document.getElementById("archivoNombres");
-    if (!input.files || input.files.length === 0) {
-        alert("Selecciona un archivo (.xlsx, .csv o .txt).");
-        return;
-    }
-
-    const file = input.files[0];
-    const reader = new FileReader();
-    const extension = file.name.split('.').pop().toLowerCase();
-
-    if (extension === 'xlsx' || extension === 'xls') {
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                let nuevosNombres = [];
-                json.forEach(row => {
-                    if (row[0]) {
-                        let val = String(row[0]).trim().toUpperCase();
-                        if (val && val !== "NOMBRE" && val !== "NOMBRES") {
-                            nuevosNombres.push(val);
-                        }
-                    }
-                });
-                guardarNombresImportados(nuevosNombres);
-            } catch (err) {
-                alert("Error al leer el archivo Excel: " + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    } else {
-        reader.onload = function(e) {
-            try {
-                const contenido = e.target.result;
-                const lineas = contenido.split(/\r\n|\n/);
-                let nuevosNombres = [];
-                lineas.forEach(linea => {
-                    let columnas = linea.split(/[,;\t]/);
-                    let val = columnas[0] ? columnas[0].replace(/["']/g, "").trim().toUpperCase() : "";
-                    if (val && val !== "NOMBRE" && val !== "NOMBRES") {
-                        nuevosNombres.push(val);
-                    }
-                });
-                guardarNombresImportados(nuevosNombres);
-            } catch (err) {
-                alert("Error al leer el archivo: " + err.message);
-            }
-        };
-        reader.readAsText(file);
-    }
-}
-
-function guardarNombresImportados(nuevosNombres) {
-    if (nuevosNombres.length > 0) {
-        localStorage.setItem('rowan_nombres', JSON.stringify(nuevosNombres));
-        localStorage.setItem('rowan_indice_nombre', '0');
-        cargarNombresGestion();
-        actualizarSelectNombresProducto();
-        alert(`¡Se importaron ${nuevosNombres.length} nombres correctamente!`);
-        document.getElementById("archivoNombres").value = "";
-    } else {
-        alert("No se encontraron nombres válidos.");
-    }
-}
-
 // --- PROVEEDORES Y PRODUCTOS ---
 function guardarProveedor() {
     const editId = document.getElementById("prov_edit_id").value;
@@ -954,8 +887,9 @@ function procesarNuevoProducto() {
     const colorStr = coloresSeleccionados.length > 0 ? coloresSeleccionados.join(', ') : '';
 
     const nombreManualSeleccionado = document.getElementById("nombre_hombre_select").value;
-    const costoProv = parseFloat(document.getElementById("costo_prov").value);
+    const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
+    const costoEnvio = parseFloat(document.getElementById("costo_envio").value) || 0;
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
     const tipoPrecio = document.getElementById("precio_venta").dataset.tipo || "automatico";
     
@@ -979,6 +913,7 @@ function procesarNuevoProducto() {
                 prod.color = colorStr;
                 prod.costo_proveedor = costoProv;
                 prod.costo_packaging = costoPack;
+                prod.costo_envio = costoEnvio;
                 prod.precio_venta = precioVenta;
                 prod.tipo_precio = tipoPrecio;
                 prod.peso_kg = peso;
@@ -986,7 +921,6 @@ function procesarNuevoProducto() {
                 prod.ancho_cm = ancho;
                 prod.profundidad_cm = prof;
 
-                // Asegurar stock_colores para nuevos colores
                 if (!prod.stock_colores) prod.stock_colores = {};
                 coloresSeleccionados.forEach(c => {
                     if (prod.stock_colores[c] === undefined) prod.stock_colores[c] = 0;
@@ -1028,7 +962,7 @@ function procesarNuevoProducto() {
                 sku, categoria, nombre_rowan: nombreRowan, descripcion_proveedor: descProveedor,
                 descripcion_articulo: descArticulo, proveedor_id: proveedorId, color: colorStr, 
                 stock_colores: stockColoresObj,
-                costo_proveedor: costoProv, costo_packaging: costoPack, precio_venta: precioVenta, 
+                costo_proveedor: costoProv, costo_packaging: costoPack, costo_envio: costoEnvio, precio_venta: precioVenta, 
                 tipo_precio: tipoPrecio, peso_kg: peso, alto_cm: alto, ancho_cm: ancho, 
                 profundidad_cm: prof, visible: true
             };
@@ -1039,6 +973,7 @@ function procesarNuevoProducto() {
             document.getElementById("productForm").reset();
             actualizarCheckboxesColoresProducto();
             document.getElementById("costo_pack").value = "1000";
+            document.getElementById("costo_envio").value = "0";
             verificarModoPrecio();
         }
 
@@ -1067,6 +1002,7 @@ window.editarProducto = function(id) {
 
             document.getElementById("costo_prov").value = prod.costo_proveedor;
             document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
+            document.getElementById("costo_envio").value = prod.costo_envio || 0;
             document.getElementById("precio_venta").value = prod.precio_venta;
             verificarModoPrecio();
 
@@ -1092,6 +1028,7 @@ window.cancelarEdicionProducto = function() {
     document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
     document.getElementById("btn-cancelar-prod").classList.add("hidden");
     document.getElementById("costo_pack").value = "1000";
+    document.getElementById("costo_envio").value = "0";
     actualizarCheckboxesColoresProducto();
     verificarModoPrecio();
 }
@@ -1153,7 +1090,8 @@ window.actualizarCostoProducto = function(prodId, nuevoCosto) {
         if (prod) {
             prod.costo_proveedor = costoNum;
             if (prod.tipo_precio !== "manual") {
-                prod.precio_venta = Math.round((prod.costo_proveedor + (prod.costo_packaging || 0)) * 2.2);
+                const totalUnitario = (prod.costo_proveedor || 0) + (prod.costo_packaging || 0) + (prod.costo_envio || 0);
+                prod.precio_venta = Math.round(totalUnitario * 2.2);
             }
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
             cargarProductos();
@@ -1187,22 +1125,16 @@ function cargarProductos() {
 
         tbody.innerHTML = "";
         productosFiltrados.forEach(p => {
-            const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0);
+            const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0) + (p.costo_envio || 0);
             const esVisible = p.visible !== false;
 
             let coloresArr = p.color ? p.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
 
             coloresArr.forEach((colorItem, idx) => {
                 const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
-                const skuVariante = coloresArr.length > 1 ? `${p.sku}-${colorItem.substring(0, 3).toUpperCase()}` : p.sku;
-
-                let medidasTexto = [];
-                if (p.peso_kg) medidasTexto.push(`${p.peso_kg} kg`);
-                if (p.alto_cm || p.ancho_cm || p.profundidad_cm) {
-                    let dims = `${p.alto_cm || '-'}/${p.ancho_cm || '-'}/${p.profundidad_cm || '-'}`;
-                    medidasTexto.push(`[${dims} cm]`);
-                }
-                const infoMedidas = medidasTexto.length > 0 ? medidasTexto.join(' ') : 'No especificado';
+                
+                // SKU ÚNICO SIN MODIFICACIONES POR COLOR (Mantiene el mismo SKU base)
+                const skuUnico = p.sku;
 
                 const badgeVisibilidad = (idx === 0 && esVisible) 
                     ? `<span class="bg-emerald-950/80 border border-emerald-700 px-2 py-0.5 rounded text-emerald-400 text-[10px] font-semibold">Visible</span>`
@@ -1211,7 +1143,7 @@ function cargarProductos() {
                 tbody.innerHTML += `
                     <tr class="hover:bg-zinc-800/50 transition">
                         <td class="py-3 text-center">${badgeVisibilidad}</td>
-                        <td class="py-3 font-mono text-xs text-zinc-400">${skuVariante}</td>
+                        <td class="py-3 font-mono text-xs text-zinc-400">${skuUnico}</td>
                         <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-emerald-400 font-semibold block">Color: ${colorItem}</span></td>
                         <td class="py-3 font-mono text-amber-400">
                             <input type="number" value="${stockColorVal}" min="0" onchange="actualizarStockColor('${p.id}', '${colorItem}', this.value)" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-amber-400 font-semibold focus:outline-none">
@@ -1256,11 +1188,11 @@ function cargarProveedoresFicha() {
                 let coloresArr = prod.color ? prod.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
                 coloresArr.forEach(colorItem => {
                     const stockColorVal = (prod.stock_colores && prod.stock_colores[colorItem] !== undefined) ? prod.stock_colores[colorItem] : 0;
-                    const skuVariante = coloresArr.length > 1 ? `${prod.sku}-${colorItem.substring(0, 3).toUpperCase()}` : prod.sku;
+                    const skuUnico = prod.sku; // SKU único invariable
 
                     filasTabla += `
                         <tr class="border-b border-zinc-900">
-                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${skuVariante}</td>
+                            <td class="py-2.5 px-3 font-mono text-xs text-zinc-400">${skuUnico}</td>
                             <td class="py-2.5 px-3 text-zinc-300">${prod.descripcion_proveedor}</td>
                             <td class="py-2.5 px-3 font-semibold text-zinc-100">${prod.nombre_rowan} <span class="text-emerald-400">(${colorItem})</span></td>
                             <td class="py-2.5 px-3 font-mono text-amber-400">${stockColorVal} u.</td>
@@ -1407,83 +1339,5 @@ window.exportarExcelTiendanube = function() {
         XLSX.writeFile(workbook, "catalogo_tienda_negocio_rowan.xlsx");
     } catch (err) {
         alert("Error al exportar archivo Excel: " + err.message);
-    }
-}
-
-window.procesarActualizacionTienda = function() {
-    const input = document.getElementById("archivoTiendaActualizar");
-    if (!input.files || input.files.length === 0) {
-        alert("Por favor selecciona el archivo exportado de Tienda Negocio (.xlsx o .csv).");
-        return;
-    }
-
-    const file = input.files[0];
-    const reader = new FileReader();
-    const extension = file.name.split('.').pop().toLowerCase();
-
-    reader.onload = function(e) {
-        try {
-            let jsonRows = [];
-            if (extension === 'xlsx' || extension === 'xls') {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
-            } else {
-                const contenido = e.target.result;
-                const workbook = XLSX.read(contenido, { type: 'string' });
-                const firstSheetName = workbook.SheetNames[0];
-                jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName]);
-            }
-
-            let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
-            let actualizadosCount = 0;
-
-            jsonRows.forEach(row => {
-                const skuArchivo = String(row["SKU"] || "").trim();
-                const stockArchivo = parseInt(row["Stock"], 10);
-                const descArchivo = String(row["Descripción"] || "").trim();
-                const varianteColor = String(row["Opción de variante #1"] || "").trim();
-
-                if (skuArchivo) {
-                    productos.forEach(p => {
-                        if (!p.stock_colores) p.stock_colores = {};
-
-                        // Coincidencia por SKU de variante o SKU base + color
-                        const matchSkuExacto = p.sku === skuArchivo || skuArchivo.startsWith(p.sku + '-');
-                        
-                        if (matchSkuExacto) {
-                            if (!isNaN(stockArchivo)) {
-                                if (varianteColor) {
-                                    p.stock_colores[varianteColor] = stockArchivo;
-                                } else {
-                                    // Si no tiene variante especificada, se actualiza el primer color
-                                    const primerColor = Object.keys(p.stock_colores)[0] || "Único";
-                                    p.stock_colores[primerColor] = stockArchivo;
-                                }
-                            }
-                            if (descArchivo) {
-                                p.descripcion_articulo = descArchivo;
-                            }
-                            actualizadosCount++;
-                        }
-                    });
-                }
-            });
-
-            localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert(`¡Actualización exitosa! Se actualizaron stocks y descripciones en ${actualizadosCount} variantes.`);
-            cargarProductos();
-            cargarVistaPreviaTiendanube();
-            input.value = "";
-        } catch (err) {
-            alert("Error al procesar el archivo: " + err.message);
-        }
-    };
-
-    if (extension === 'xlsx' || extension === 'xls') {
-        reader.readAsArrayBuffer(file);
-    } else {
-        reader.readAsText(file);
     }
 }
