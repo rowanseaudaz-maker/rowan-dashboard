@@ -340,7 +340,7 @@ window.registrarCompraRealizada = function() {
                     subtotalProductos += (nuevoCostoProv * cantidad);
                     itemsComprados.push({
                         id: prod.id,
-                        sku: prod.sku, // SKU único invariable
+                        sku: prod.sku, // Mismo SKU único invariable
                         nombre: `${prod.nombre_rowan} (${colorItem})`,
                         cantidad,
                         costoUnitario: nuevoCostoProv
