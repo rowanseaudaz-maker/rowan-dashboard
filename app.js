@@ -340,7 +340,7 @@ window.registrarCompraRealizada = function() {
                     subtotalProductos += (nuevoCostoProv * cantidad);
                     itemsComprados.push({
                         id: prod.id,
-                        sku: prod.sku, // Mismo SKU único sin importar color
+                        sku: prod.sku, // SKU único invariable
                         nombre: `${prod.nombre_rowan} (${colorItem})`,
                         cantidad,
                         costoUnitario: nuevoCostoProv
@@ -1133,7 +1133,7 @@ function cargarProductos() {
             coloresArr.forEach((colorItem, idx) => {
                 const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
                 
-                // SKU ÚNICO SIN MODIFICACIONES POR COLOR (Mantiene el mismo SKU base)
+                // SKU único invariable por color
                 const skuUnico = p.sku;
 
                 const badgeVisibilidad = (idx === 0 && esVisible) 
@@ -1188,7 +1188,7 @@ function cargarProveedoresFicha() {
                 let coloresArr = prod.color ? prod.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
                 coloresArr.forEach(colorItem => {
                     const stockColorVal = (prod.stock_colores && prod.stock_colores[colorItem] !== undefined) ? prod.stock_colores[colorItem] : 0;
-                    const skuUnico = prod.sku; // SKU único invariable
+                    const skuUnico = prod.sku;
 
                     filasTabla += `
                         <tr class="border-b border-zinc-900">
