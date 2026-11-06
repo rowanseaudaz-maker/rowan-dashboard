@@ -49,7 +49,7 @@ function inicializarSistema() {
             localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
         }
 
-        // Migración a stock por color
+        // Migración a stock por color y costo de envío
         productos.forEach(p => {
             if (!p.stock_colores || typeof p.stock_colores !== 'object') {
                 p.stock_colores = {};
@@ -927,7 +927,7 @@ function procesarNuevoProducto() {
                 });
             }
             localStorage.setItem('rowan_productos', JSON.stringify(productos));
-            alert("¡Artículo actualizado!");
+            alert("¡Guardar Cambios exitoso! Artículo actualizado correctamente.");
             cancelarEdicionProducto();
         } else {
             const mismaCat = productos.filter(p => p.categoria === categoria);
@@ -1012,7 +1012,7 @@ window.editarProducto = function(id) {
             document.getElementById("prof").value = prod.profundidad_cm || "";
 
             document.getElementById("form-producto-titulo").textContent = "Editar Producto";
-            document.getElementById("btn-guardar-prod").textContent = "Actualizar Producto";
+            document.getElementById("btn-guardar-prod").textContent = "Guardar Cambios";
             document.getElementById("btn-cancelar-prod").classList.remove("hidden");
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
