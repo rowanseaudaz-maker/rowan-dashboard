@@ -224,7 +224,7 @@ window.cargarProductosParaComprar = function() {
                 <table class="w-full text-left text-xs">
                     <thead class="border-b border-zinc-800 text-zinc-400 uppercase sticky top-0 bg-zinc-900 z-10">
                         <tr>
-                            <th class="pb-2 px-2">SKU Único</th>
+                            <th class="pb-2 px-2">SKU Base</th>
                             <th class="pb-2 px-2">Artículo ROWAN</th>
                             <th class="pb-2 px-2">Color / Variante</th>
                             <th class="pb-2 px-2">Stock Actual</th>
@@ -1152,7 +1152,7 @@ function cargarProductos() {
                         <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span></td>
                         <td class="py-3 text-right">
                             ${idx === 0 ? `<button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
-                                          <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>` : '<span class="text-[10px] text-zinc-500">Variante</span>'}
+                                          <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>` : '<span class="text-[10px] text-zinc-500">Variante</span>'}
                         </td>
                     </tr>
                 `;
@@ -1213,7 +1213,7 @@ function cargarProveedoresFicha() {
                         <table class="w-full text-left text-xs">
                             <thead class="border-b border-zinc-800 text-zinc-500 uppercase">
                                 <tr>
-                                    <th class="pb-2 px-3">SKU</th>
+                                    <th class="pb-2 px-3">SKU Base</th>
                                     <th class="pb-2 px-3">Descripción</th>
                                     <th class="pb-2 px-3">Artículo ROWAN (Color)</th>
                                     <th class="pb-2 px-3">Stock</th>
