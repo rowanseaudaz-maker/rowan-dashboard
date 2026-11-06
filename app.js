@@ -340,7 +340,7 @@ window.registrarCompraRealizada = function() {
                     subtotalProductos += (nuevoCostoProv * cantidad);
                     itemsComprados.push({
                         id: prod.id,
-                        sku: prod.sku, // Mismo SKU único invariable
+                        sku: prod.sku,
                         nombre: `${prod.nombre_rowan} (${colorItem})`,
                         cantidad,
                         costoUnitario: nuevoCostoProv
@@ -997,7 +997,7 @@ window.editarProducto = function(id) {
             document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
             document.getElementById("categoria_select").value = prod.categoria;
             
-            const coloresGuardados = prod.color ? prod.color.split(', ').map(c => c.trim()) : [];
+            const coloresGuardados = prod.color ? prod.color.split(',').map(c => c.trim()) : [];
             actualizarCheckboxesColoresProducto(coloresGuardados);
 
             document.getElementById("costo_prov").value = prod.costo_proveedor;
@@ -1133,7 +1133,7 @@ function cargarProductos() {
             coloresArr.forEach((colorItem, idx) => {
                 const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
                 
-                // SKU único invariable por color
+                // SKU ÚNICO LIMPIO SIN MODIFICACIONES
                 const skuUnico = p.sku;
 
                 const badgeVisibilidad = (idx === 0 && esVisible) 
