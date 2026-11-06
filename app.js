@@ -1133,7 +1133,6 @@ function cargarProductos() {
             coloresArr.forEach((colorItem, idx) => {
                 const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
                 
-                // SKU ÚNICO LIMPIO SIN MODIFICACIONES
                 const skuUnico = p.sku;
 
                 const badgeVisibilidad = (idx === 0 && esVisible) 
