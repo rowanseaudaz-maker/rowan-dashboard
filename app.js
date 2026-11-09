@@ -1328,7 +1328,7 @@ function obtenerDatosTiendanubeFormato() {
                     "Stock": stockColorVal,
                     "Visibilidad (Visible o Oculto)": visibilidadText,
                     "Descripción": "",
-                    "SKU": `${p.sku}-${colIndividual.substring(0, 3).toUpperCase()}`,
+                    "SKU": p.sku || "",
                     "Peso en KG": p.peso_kg || 0,
                     "Alto en CM": p.alto_cm || "",
                     "Ancho en CM": p.ancho_cm || "",
@@ -1438,7 +1438,6 @@ window.importarExcelTiendanube = function(event) {
                 const nombreProd = row["Nombre del producto"] || row["nombre del producto"] || row["Nombre"];
                 const precio = parseFloat(row["Precio"] || row["precio"]) || 0;
                 const stock = parseInt(row["Stock"] || row["stock"]) || 0;
-                const sku = String(row["SKU"] || row["sku"] || "");
                 const colorVar = row["Opción de variante #1"] || row["opción de variante #1"] || "";
                 const categoria = row["Categorías > Subcategorías > … > Subcategorías"] || row["Categoría"] || "";
 
