@@ -39,7 +39,7 @@ function inicializarSistema() {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
 
-        // AUTORREPARACIÓN: Corregir nombres mal guardados como "NECESE" a "NECESER" y limpiar stock por color
+        // AUTORREPARACIÓN: Corregir nombres mal guardados como "NECESE" a "NECESER"
         productos.forEach(p => {
             if (p.nombre_rowan) {
                 p.nombre_rowan = p.nombre_rowan.replace(/^NECESE\b/i, 'NECESER');
@@ -55,6 +55,7 @@ function inicializarSistema() {
                 }
             }
             if (p.costo_envio === undefined) p.costo_envio = 0;
+            if (p.tipo_precio === undefined) p.tipo_precio = "automatico";
         });
         localStorage.setItem('rowan_productos', JSON.stringify(productos));
 
@@ -652,7 +653,6 @@ function actualizarSelectNombresProducto() {
             if (p.nombre_rowan) {
                 const partes = p.nombre_rowan.trim().split(/\s+/);
                 if (partes.length > 1) {
-                    // Guarda todas las palabras secundarias (ej: el nombre como EDWARD, HENRY, etc.)
                     for (let i = 1; i < partes.length; i++) {
                         nombresUsadosSet.add(partes[i].toUpperCase());
                     }
@@ -976,9 +976,33 @@ function procesarNuevoProducto() {
     try {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
 
+        // Determinar base singular de la categoría para el nombre
+        let nombreBaseSingular = categoria.toUpperCase();
+        const catLower = categoria.toLowerCase();
+        if (catLower === "mochilas") nombreBaseSingular = "MOCHILA";
+        else if (catLower === "riñoneras") nombreBaseSingular = "RIÑONERA";
+        else if (catLower === "neceres" || catLower === "neceser") nombreBaseSingular = "NECESER";
+        else if (catLower === "relojes" || catLower === "reloj") nombreBaseSingular = "RELOJ";
+        else if (catLower === "cintos" || catLower === "cinto") nombreBaseSingular = "CINTO";
+        else if (catLower === "tote bags") nombreBaseSingular = "TOTE BAG";
+        else if (catLower === "porta notebooks" || catLower === "porta notebook") nombreBaseSingular = "PORTA NOTEBOOK";
+        else if (catLower === "bolos" || catLower === "bolo") nombreBaseSingular = "BOLSO";
+        else if (catLower === "botineros" || catLower === "botinero") nombreBaseSingular = "BOTINERO";
+        else {
+            if (nombreBaseSingular.endsWith('S') && nombreBaseSingular.length > 3) {
+                nombreBaseSingular = nombreBaseSingular.slice(0, -1);
+            }
+        }
+
         if (editId) {
             const prod = productos.find(p => p.id === editId);
             if (prod) {
+                // Mantener el nombre personalizado existente o extraerlo si cambia la categoría
+                let partesNombreViejo = prod.nombre_rowan ? prod.nombre_rowan.trim().split(/\s+/) : [];
+                let segundoNombre = partesNombreViejo.length > 1 ? partesNombreViejo.slice(1).join(' ') : (nombreManualSeleccionado || "ROWAN");
+                if (nombreManualSeleccionado) segundoNombre = nombreManualSeleccionado;
+
+                prod.nombre_rowan = `${nombreBaseSingular} ${segundoNombre}`;
                 prod.proveedor_id = proveedorId;
                 prod.descripcion_proveedor = descProveedor;
                 prod.descripcion_articulo = descArticulo;
@@ -1006,23 +1030,6 @@ function procesarNuevoProducto() {
             const mismaCat = productos.filter(p => p.categoria === categoria);
             const prefix = categoria.substring(0, 3).toUpperCase();
             const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
-
-            let nombreBaseSingular = categoria.toUpperCase();
-            const catLower = categoria.toLowerCase();
-            if (catLower === "mochilas") nombreBaseSingular = "MOCHILA";
-            else if (catLower === "riñoneras") nombreBaseSingular = "RIÑONERA";
-            else if (catLower === "neceres" || catLower === "neceser") nombreBaseSingular = "NECESER";
-            else if (catLower === "relojes" || catLower === "reloj") nombreBaseSingular = "RELOJ";
-            else if (catLower === "cintos" || catLower === "cinto") nombreBaseSingular = "CINTO";
-            else if (catLower === "tote bags") nombreBaseSingular = "TOTE BAG";
-            else if (catLower === "porta notebooks" || catLower === "porta notebook") nombreBaseSingular = "PORTA NOTEBOOK";
-            else if (catLower === "bolos" || catLower === "bolo") nombreBaseSingular = "BOLSO";
-            else if (catLower === "botineros" || catLower === "botinero") nombreBaseSingular = "BOTINERO";
-            else {
-                if (nombreBaseSingular.endsWith('S') && nombreBaseSingular.length > 3) {
-                    nombreBaseSingular = nombreBaseSingular.slice(0, -1);
-                }
-            }
 
             let nombreElegido = "";
             if (nombreManualSeleccionado) {
@@ -1103,8 +1110,16 @@ window.editarProducto = function(id) {
                 btnGuardar.textContent = "Guardar Cambios";
                 btnGuardar.className = "w-full bg-amber-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-amber-500 transition";
             }
+            const btnGuardarTop = document.getElementById("btn-guardar-prod-top");
+            if (btnGuardarTop) {
+                btnGuardarTop.textContent = "Guardar Cambios";
+                btnGuardarTop.className = "w-full bg-amber-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-amber-500 transition";
+            }
+
             const btnCancelar = document.getElementById("btn-cancelar-prod");
             if (btnCancelar) btnCancelar.classList.remove("hidden");
+            const btnCancelarTop = document.getElementById("btn-cancelar-prod-top");
+            if (btnCancelarTop) btnCancelarTop.classList.remove("hidden");
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -1123,9 +1138,16 @@ window.cancelarEdicionProducto = function() {
         btnGuardar.textContent = "Generar Artículo Automático";
         btnGuardar.className = "w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition";
     }
+    const btnGuardarTop = document.getElementById("btn-guardar-prod-top");
+    if (btnGuardarTop) {
+        btnGuardarTop.textContent = "Generar Artículo Automático";
+        btnGuardarTop.className = "w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition";
+    }
     
     const btnCancelar = document.getElementById("btn-cancelar-prod");
     if (btnCancelar) btnCancelar.classList.add("hidden");
+    const btnCancelarTop = document.getElementById("btn-cancelar-prod-top");
+    if (btnCancelarTop) btnCancelarTop.classList.add("hidden");
 
     document.getElementById("costo_pack").value = "1000";
     document.getElementById("costo_envio").value = "0";
@@ -1228,6 +1250,13 @@ function cargarProductos() {
             const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0) + (p.costo_envio || 0);
             const esVisible = p.visible !== false;
 
+            // Verificar si el precio es automático o manual
+            const precioAuto = (costoReal) * 2.2;
+            const esAutomatico = Math.abs((p.precio_venta || 0) - precioAuto) < 1;
+            const badgePrecio = esAutomatico 
+                ? `<span class="ml-2 text-[10px] bg-amber-950/80 border border-amber-600 text-amber-300 px-1.5 py-0.5 rounded font-medium">Auto</span>` 
+                : `<span class="ml-2 text-[10px] bg-sky-950/80 border border-sky-600 text-sky-300 px-1.5 py-0.5 rounded font-medium">Manual</span>`;
+
             let coloresArr = p.color ? p.color.split(',').map(c => c.trim()).filter(c => c.length > 0) : ["Único"];
 
             coloresArr.forEach((colorItem, idx) => {
@@ -1247,7 +1276,7 @@ function cargarProductos() {
                             <input type="number" value="${stockColorVal}" min="0" onchange="actualizarStockColor('${p.id}', '${colorItem}', this.value)" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-amber-400 font-semibold focus:outline-none">
                         </td>
                         <td class="py-3 text-zinc-300">$${costoReal.toLocaleString()}</td>
-                        <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span></td>
+                        <td class="py-3"><span class="font-semibold text-xs">$${p.precio_venta.toLocaleString()}</span> ${badgePrecio}</td>
                         <td class="py-3 text-right">
                             ${idx === 0 ? `<button onclick="editarProducto('${p.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition mr-1">Editar</button>
                                           <button onclick="eliminarProducto('${p.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>` : '<span class="text-[10px] text-zinc-500">Variante</span>'}
