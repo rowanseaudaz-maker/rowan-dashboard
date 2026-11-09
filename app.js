@@ -49,7 +49,6 @@ function inicializarSistema() {
             localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
         }
 
-        // Migración a stock por color y costo de envío
         productos.forEach(p => {
             if (!p.stock_colores || typeof p.stock_colores !== 'object') {
                 p.stock_colores = {};
@@ -517,7 +516,7 @@ function cargarHistorialCompras() {
     }
 }
 
-// --- CÁLCULO DE PRECIOS Y GESTIÓN DE COLORES / NOMBRES ---
+// --- CÁLCULO DE PRECIOS Y GESTIÓN DE COLORES / NOMBRES / CATEGORÍAS ---
 window.calcularPrecioAutomatico = function() {
     const costoProv = parseFloat(document.getElementById("costo_prov").value) || 0;
     const costoPack = parseFloat(document.getElementById("costo_pack").value) || 0;
@@ -881,6 +880,19 @@ window.editarCategoria = function(id) {
     }
 }
 
+window.eliminarCategoria = function(id) {
+    if (!confirm("¿Estás seguro de eliminar esta categoría?")) return;
+    try {
+        let cats = JSON.parse(localStorage.getItem('rowan_categorias')) || [];
+        cats = cats.filter(c => c.id !== id);
+        localStorage.setItem('rowan_categorias', JSON.stringify(cats));
+        cargarCategoriasGestion();
+        cargarSelectores();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 window.cancelarEdicionCategoria = function() {
     document.getElementById("categoriaForm").reset();
     document.getElementById("cat_edit_id").value = "";
@@ -909,7 +921,10 @@ function cargarCategoriasGestion() {
                         <span>${c.nombre}</span>
                         <span class="ml-2 text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono">SKU: (${codigoSku})</span>
                     </div>
-                    <button onclick="editarCategoria('${c.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
+                    <div class="flex gap-2">
+                        <button onclick="editarCategoria('${c.id}')" class="text-xs bg-zinc-800 text-zinc-300 border border-zinc-700 px-2.5 py-1 rounded hover:bg-zinc-700 transition">Editar</button>
+                        <button onclick="eliminarCategoria('${c.id}')" class="text-xs bg-rose-950 text-rose-400 border border-rose-800 px-2.5 py-1 rounded hover:bg-rose-900 transition">Eliminar</button>
+                    </div>
                 </li>
             `;
         });
@@ -936,10 +951,10 @@ function procesarNuevoProducto() {
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
     const tipoPrecio = document.getElementById("precio_venta").dataset.tipo || "automatico";
     
-    const peso = parseFloat(document.getElementById("peso") ? document.getElementById("peso").value : 0) || 0;
-    const alto = parseFloat(document.getElementById("alto") ? document.getElementById("alto").value : 0) || null;
-    const ancho = parseFloat(document.getElementById("ancho") ? document.getElementById("ancho").value : 0) || null;
-    const prof = parseFloat(document.getElementById("prof") ? document.getElementById("prof").value : 0) || null;
+    const peso = parseFloat(document.getElementById("peso").value) || 0;
+    const alto = parseFloat(document.getElementById("alto").value) || null;
+    const ancho = parseFloat(document.getElementById("ancho").value) || null;
+    const prof = parseFloat(document.getElementById("prof").value) || null;
 
     if (!proveedorId) return alert("Selecciona un proveedor.");
 
@@ -1043,18 +1058,21 @@ window.editarProducto = function(id) {
                 document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
             }
 
-            // Cargar costos correctamente
             document.getElementById("costo_prov").value = prod.costo_proveedor !== undefined ? prod.costo_proveedor : 0;
             document.getElementById("costo_pack").value = prod.costo_packaging !== undefined ? prod.costo_packaging : 1000;
             document.getElementById("costo_envio").value = prod.costo_envio !== undefined ? prod.costo_envio : 0;
             document.getElementById("precio_venta").value = prod.precio_venta !== undefined ? prod.precio_venta : 0;
             
+            document.getElementById("peso").value = prod.peso_kg !== undefined ? prod.peso_kg : 0;
+            document.getElementById("alto").value = prod.alto_cm !== undefined ? prod.alto_cm : "";
+            document.getElementById("ancho").value = prod.ancho_cm !== undefined ? prod.ancho_cm : "";
+            document.getElementById("prof").value = prod.profundidad_cm !== undefined ? prod.profundidad_cm : "";
+
             verificarModoPrecio();
 
             const coloresGuardados = prod.color ? prod.color.split(',').map(c => c.trim()) : [];
             actualizarCheckboxesColoresProducto(coloresGuardados);
 
-            // Cambiar textos y estilos visuales del formulario para indicar edición
             document.getElementById("form-producto-titulo").textContent = "Editar Producto";
             const btnGuardar = document.getElementById("btn-guardar-prod");
             if (btnGuardar) {
@@ -1190,7 +1208,6 @@ function cargarProductos() {
 
             coloresArr.forEach((colorItem, idx) => {
                 const stockColorVal = (p.stock_colores && p.stock_colores[colorItem] !== undefined) ? p.stock_colores[colorItem] : 0;
-                
                 const skuUnico = p.sku;
 
                 const badgeVisibilidad = (idx === 0 && esVisible) 
@@ -1295,8 +1312,6 @@ function obtenerDatosTiendanubeFormato() {
 
     productos.forEach(p => {
         const visibilidadText = (p.visible !== false) ? "Visible" : "Oculto";
-        const descripcionCompleta = (p.descripcion_articulo ? p.descripcion_articulo + " - " : "") + "Proveedor: " + (p.descripcion_proveedor || '');
-        
         let coloresList = [];
         if (p.color) {
             coloresList = p.color.split(',').map(c => c.trim()).filter(c => c.length > 0);
@@ -1312,7 +1327,7 @@ function obtenerDatosTiendanubeFormato() {
                     "Oferta": "",
                     "Stock": stockColorVal,
                     "Visibilidad (Visible o Oculto)": visibilidadText,
-                    "Descripción": descripcionCompleta,
+                    "Descripción": "",
                     "SKU": `${p.sku}-${colIndividual.substring(0, 3).toUpperCase()}`,
                     "Peso en KG": p.peso_kg || 0,
                     "Alto en CM": p.alto_cm || "",
@@ -1338,7 +1353,7 @@ function obtenerDatosTiendanubeFormato() {
                 "Oferta": "",
                 "Stock": stockColorVal,
                 "Visibilidad (Visible o Oculto)": visibilidadText,
-                "Descripción": descripcionCompleta,
+                "Descripción": "",
                 "SKU": p.sku || "",
                 "Peso en KG": p.peso_kg || 0,
                 "Alto en CM": p.alto_cm || "",
@@ -1397,4 +1412,62 @@ window.exportarExcelTiendanube = function() {
     } catch (err) {
         alert("Error al exportar archivo Excel: " + err.message);
     }
+}
+
+window.importarExcelTiendanube = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+
+            if (json.length === 0) {
+                return alert("El archivo Excel está vacío.");
+            }
+
+            let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+            let contadorActualizados = 0;
+
+            json.forEach(row => {
+                const nombreProd = row["Nombre del producto"] || row["nombre del producto"] || row["Nombre"];
+                const precio = parseFloat(row["Precio"] || row["precio"]) || 0;
+                const stock = parseInt(row["Stock"] || row["stock"]) || 0;
+                const sku = String(row["SKU"] || row["sku"] || "");
+                const colorVar = row["Opción de variante #1"] || row["opción de variante #1"] || "";
+                const categoria = row["Categorías > Subcategorías > … > Subcategorías"] || row["Categoría"] || "";
+
+                if (nombreProd) {
+                    let prod = productos.find(p => (p.nombre_rowan || "").toLowerCase() === String(nombreProd).toLowerCase());
+                    if (prod) {
+                        if (precio > 0) prod.precio_venta = precio;
+                        if (categoria) prod.categoria = categoria;
+                        if (!prod.stock_colores) prod.stock_colores = {};
+                        
+                        if (colorVar) {
+                            prod.stock_colores[colorVar] = stock;
+                        } else {
+                            let primerColor = Object.keys(prod.stock_colores)[0] || "Único";
+                            prod.stock_colores[primerColor] = stock;
+                        }
+                        contadorActualizados++;
+                    }
+                }
+            });
+
+            localStorage.setItem('rowan_productos', JSON.stringify(productos));
+            cargarProductos();
+            cargarVistaPreviaTiendanube();
+            alert(`¡Se procesaron y actualizaron ${contadorActualizados} registros desde el Excel correctamente!`);
+            event.target.value = "";
+        } catch (err) {
+            alert("Error al importar la base de datos desde Excel: " + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
