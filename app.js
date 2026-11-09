@@ -992,13 +992,19 @@ function procesarNuevoProducto() {
             const prefix = categoria.substring(0, 3).toUpperCase();
             const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
 
-            let nombreBaseSingular = categoria.toUpperCase().slice(0, -1);
-            if (categoria === "Mochilas") nombreBaseSingular = "MOCHILA";
-            if (categoria === "Riñoneras") nombreBaseSingular = "RIÑONERA";
-            if (categoria === "Neceres") nombreBaseSingular = "NECESER";
-            if (categoria === "Relojes") nombreBaseSingular = "RELOJ";
-            if (categoria === "Cintos") nombreBaseSingular = "CINTO";
-            if (categoria === "Tote Bags") nombreBaseSingular = "TOTE BAG";
+            let nombreBaseSingular = categoria.toUpperCase();
+            if (categoria.toLowerCase() === "mochilas") nombreBaseSingular = "MOCHILA";
+            else if (categoria.toLowerCase() === "riñoneras") nombreBaseSingular = "RIÑONERA";
+            else if (categoria.toLowerCase() === "neceres" || categoria.toLowerCase() === "neceser") nombreBaseSingular = "NECESER";
+            else if (categoria.toLowerCase() === "relojes" || categoria.toLowerCase() === "reloj") nombreBaseSingular = "RELOJ";
+            else if (categoria.toLowerCase() === "cintos" || categoria.toLowerCase() === "cinto") nombreBaseSingular = "CINTO";
+            else if (categoria.toLowerCase() === "tote bags") nombreBaseSingular = "TOTE BAG";
+            else {
+                // Si es otra categoría, quita la 's' final si la tiene
+                if (nombreBaseSingular.endsWith('S') && nombreBaseSingular.length > 3) {
+                    nombreBaseSingular = nombreBaseSingular.slice(0, -1);
+                }
+            }
 
             let nombreElegido = "";
             if (nombreManualSeleccionado) {
