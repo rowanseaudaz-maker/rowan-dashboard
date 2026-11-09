@@ -879,7 +879,7 @@ function procesarNuevoProducto() {
     const editId = document.getElementById("prod_edit_id").value;
     const proveedorId = document.getElementById("proveedor_select").value;
     const descProveedor = document.getElementById("desc_proveedor").value;
-    const descArticulo = document.getElementById("desc_articulo").value;
+    const descArticulo = document.getElementById("desc_articulo") ? document.getElementById("desc_articulo").value : "";
     const categoria = document.getElementById("categoria_select").value;
     
     const checkboxesColores = document.querySelectorAll('input[name="producto_color"]:checked');
@@ -893,10 +893,10 @@ function procesarNuevoProducto() {
     const precioVenta = parseFloat(document.getElementById("precio_venta").value);
     const tipoPrecio = document.getElementById("precio_venta").dataset.tipo || "automatico";
     
-    const peso = parseFloat(document.getElementById("peso").value) || 0;
-    const alto = parseFloat(document.getElementById("alto").value) || null;
-    const ancho = parseFloat(document.getElementById("ancho").value) || null;
-    const prof = parseFloat(document.getElementById("prof").value) || null;
+    const peso = parseFloat(document.getElementById("peso") ? document.getElementById("peso").value : 0) || 0;
+    const alto = parseFloat(document.getElementById("alto") ? document.getElementById("alto").value : 0) || null;
+    const ancho = parseFloat(document.getElementById("ancho") ? document.getElementById("ancho").value : 0) || null;
+    const prof = parseFloat(document.getElementById("prof") ? document.getElementById("prof").value : 0) || null;
 
     if (!proveedorId) return alert("Selecciona un proveedor.");
 
@@ -992,32 +992,39 @@ window.editarProducto = function(id) {
         const prod = productos.find(p => p.id === id);
         if (prod) {
             document.getElementById("prod_edit_id").value = prod.id;
-            document.getElementById("proveedor_select").value = prod.proveedor_id;
-            document.getElementById("desc_proveedor").value = prod.descripcion_proveedor;
-            document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
-            document.getElementById("categoria_select").value = prod.categoria;
+            document.getElementById("proveedor_select").value = prod.proveedor_id || "";
+            document.getElementById("categoria_select").value = prod.categoria || "";
+            document.getElementById("desc_proveedor").value = prod.descripcion_proveedor || "";
             
+            if (document.getElementById("desc_articulo")) {
+                document.getElementById("desc_articulo").value = prod.descripcion_articulo || "";
+            }
+
+            // Cargar costos correctamente
+            document.getElementById("costo_prov").value = prod.costo_proveedor !== undefined ? prod.costo_proveedor : 0;
+            document.getElementById("costo_pack").value = prod.costo_packaging !== undefined ? prod.costo_packaging : 1000;
+            document.getElementById("costo_envio").value = prod.costo_envio !== undefined ? prod.costo_envio : 0;
+            document.getElementById("precio_venta").value = prod.precio_venta !== undefined ? prod.precio_venta : 0;
+            
+            verificarModoPrecio();
+
             const coloresGuardados = prod.color ? prod.color.split(',').map(c => c.trim()) : [];
             actualizarCheckboxesColoresProducto(coloresGuardados);
 
-            document.getElementById("costo_prov").value = prod.costo_proveedor;
-            document.getElementById("costo_pack").value = prod.costo_packaging || 1000;
-            document.getElementById("costo_envio").value = prod.costo_envio || 0;
-            document.getElementById("precio_venta").value = prod.precio_venta;
-            verificarModoPrecio();
-
-            document.getElementById("peso").value = prod.peso_kg || "";
-            document.getElementById("alto").value = prod.alto_cm || "";
-            document.getElementById("ancho").value = prod.ancho_cm || "";
-            document.getElementById("prof").value = prod.profundidad_cm || "";
-
+            // Cambiar textos y estilos visuales del formulario para indicar edición
             document.getElementById("form-producto-titulo").textContent = "Editar Producto";
-            document.getElementById("btn-guardar-prod").textContent = "Guardar Cambios";
-            document.getElementById("btn-cancelar-prod").classList.remove("hidden");
+            const btnGuardar = document.getElementById("btn-guardar-prod");
+            if (btnGuardar) {
+                btnGuardar.textContent = "Guardar Cambios";
+                btnGuardar.className = "w-full bg-amber-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-amber-500 transition";
+            }
+            const btnCancelar = document.getElementById("btn-cancelar-prod");
+            if (btnCancelar) btnCancelar.classList.remove("hidden");
+
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     } catch (e) {
-        console.error(e);
+        console.error("Error al editar producto:", e);
     }
 }
 
@@ -1025,8 +1032,16 @@ window.cancelarEdicionProducto = function() {
     document.getElementById("productForm").reset();
     document.getElementById("prod_edit_id").value = "";
     document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
-    document.getElementById("btn-guardar-prod").textContent = "Generar Artículo Automático";
-    document.getElementById("btn-cancelar-prod").classList.add("hidden");
+    
+    const btnGuardar = document.getElementById("btn-guardar-prod");
+    if (btnGuardar) {
+        btnGuardar.textContent = "Generar Artículo Automático";
+        btnGuardar.className = "w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition";
+    }
+    
+    const btnCancelar = document.getElementById("btn-cancelar-prod");
+    if (btnCancelar) btnCancelar.classList.add("hidden");
+
     document.getElementById("costo_pack").value = "1000";
     document.getElementById("costo_envio").value = "0";
     actualizarCheckboxesColoresProducto();
