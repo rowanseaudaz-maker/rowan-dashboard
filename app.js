@@ -679,6 +679,49 @@ function guardarNombreNuevo() {
     }
 }
 
+window.importarExcelNombres = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            let nuevosNombres = [];
+            json.forEach(row => {
+                if (row[0] && typeof row[0] === 'string') {
+                    const limpio = row[0].trim().toUpperCase();
+                    if (limpio && limpio !== "NOMBRE" && limpio !== "NOMBRES") {
+                        nuevosNombres.push(limpio);
+                    }
+                }
+            });
+
+            if (nuevosNombres.length === 0) {
+                return alert("No se encontraron nombres válidos en el archivo Excel.");
+            }
+
+            let nombresActuales = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
+            let setNombres = new Set([...nombresActuales, ...nuevosNombres]);
+            let nombresFinales = Array.from(setNombres);
+
+            localStorage.setItem('rowan_nombres', JSON.stringify(nombresFinales));
+            cargarNombresGestion();
+            actualizarSelectNombresProducto();
+            alert(`¡Se importaron ${nuevosNombres.length} nombres con éxito!`);
+            event.target.value = "";
+        } catch (err) {
+            alert("Error al procesar el archivo Excel: " + err.message);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 window.eliminarNombre = function(index) {
     try {
         let nombres = JSON.parse(localStorage.getItem('rowan_nombres')) || [];
