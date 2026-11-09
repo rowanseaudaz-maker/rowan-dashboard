@@ -8,7 +8,10 @@ function inicializarSistema() {
             { id: '3', nombre: 'Neceres' },
             { id: '4', nombre: 'Relojes' },
             { id: '5', nombre: 'Cintos' },
-            { id: '6', nombre: 'Tote Bags' }
+            { id: '6', nombre: 'Tote Bags' },
+            { id: '7', nombre: 'Porta Notebooks' },
+            { id: '8', nombre: 'Bolos' },
+            { id: '9', nombre: 'Botineros' }
         ]));
     }
     if (!localStorage.getItem('rowan_proveedores')) {
@@ -22,7 +25,7 @@ function inicializarSistema() {
     }
     if (!localStorage.getItem('rowan_nombres')) {
         localStorage.setItem('rowan_nombres', JSON.stringify([
-            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN"
+            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN", "EDWARD", "THEODORE", "JAMES", "WILLIAM", "ARTHUR", "HENRY", "OLIVER", "BENJAMIN", "CHARLES", "ELLIOT", "OWEN"
         ]));
     }
     if (!localStorage.getItem('rowan_colores')) {
@@ -36,20 +39,11 @@ function inicializarSistema() {
         let productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
         let compras = JSON.parse(localStorage.getItem('rowan_compras')) || [];
 
-        if (proveedores.length === 0 && compras.length > 0) {
-            let provMap = new Map();
-            compras.forEach(c => {
-                if (c.proveedor) {
-                    const provNombreClean = c.proveedor.trim();
-                    const provId = c.proveedor_id || ('prov_' + provNombreClean.toLowerCase().replace(/\s+/g, '_'));
-                    provMap.set(provId, { id: provId, nombre: provNombreClean, contacto: '', web: '' });
-                }
-            });
-            proveedores = Array.from(provMap.values());
-            localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
-        }
-
+        // AUTORREPARACIÓN: Corregir nombres mal guardados como "NECESE" a "NECESER" y limpiar stock por color
         productos.forEach(p => {
+            if (p.nombre_rowan) {
+                p.nombre_rowan = p.nombre_rowan.replace(/^NECESE\b/i, 'NECESER');
+            }
             if (!p.stock_colores || typeof p.stock_colores !== 'object') {
                 p.stock_colores = {};
                 const stockAntiguo = typeof p.stock === 'number' ? p.stock : 0;
@@ -63,6 +57,19 @@ function inicializarSistema() {
             if (p.costo_envio === undefined) p.costo_envio = 0;
         });
         localStorage.setItem('rowan_productos', JSON.stringify(productos));
+
+        if (proveedores.length === 0 && compras.length > 0) {
+            let provMap = new Map();
+            compras.forEach(c => {
+                if (c.proveedor) {
+                    const provNombreClean = c.proveedor.trim();
+                    const provId = c.proveedor_id || ('prov_' + provNombreClean.toLowerCase().replace(/\s+/g, '_'));
+                    provMap.set(provId, { id: provId, nombre: provNombreClean, contacto: '', web: '' });
+                }
+            });
+            proveedores = Array.from(provMap.values());
+            localStorage.setItem('rowan_proveedores', JSON.stringify(proveedores));
+        }
     } catch (err) {
         console.error("Error en autorreparación:", err);
     }
@@ -643,16 +650,20 @@ function actualizarSelectNombresProducto() {
         let nombresUsadosSet = new Set();
         productos.forEach(p => {
             if (p.nombre_rowan) {
-                const partes = p.nombre_rowan.split(' ');
+                const partes = p.nombre_rowan.trim().split(/\s+/);
                 if (partes.length > 1) {
-                    nombresUsadosSet.add(partes.slice(1).join(' ').toUpperCase());
+                    // Guarda todas las palabras secundarias (ej: el nombre como EDWARD, HENRY, etc.)
+                    for (let i = 1; i < partes.length; i++) {
+                        nombresUsadosSet.add(partes[i].toUpperCase());
+                    }
                 }
             }
         });
 
         select.innerHTML = '<option value="">Automático (Siguiente disponible)</option>';
         nombres.forEach(nom => {
-            const usado = nombresUsadosSet.has(nom.toUpperCase());
+            const nomClean = nom.trim().toUpperCase();
+            const usado = nombresUsadosSet.has(nomClean);
             const etiqueta = usado ? `${nom} (USADO / OCUPADO)` : nom;
             select.innerHTML += `<option value="${nom}" ${usado ? 'class="text-zinc-500 bg-zinc-900"' : ''}>${etiqueta}</option>`;
         });
@@ -744,8 +755,12 @@ function cargarNombresGestion() {
         let nombresUsadosSet = new Set();
         productos.forEach(p => {
             if (p.nombre_rowan) {
-                const partes = p.nombre_rowan.split(' ');
-                if (partes.length > 1) nombresUsadosSet.add(partes.slice(1).join(' ').toUpperCase());
+                const partes = p.nombre_rowan.trim().split(/\s+/);
+                if (partes.length > 1) {
+                    for (let i = 1; i < partes.length; i++) {
+                        nombresUsadosSet.add(partes[i].toUpperCase());
+                    }
+                }
             }
         });
 
@@ -993,14 +1008,17 @@ function procesarNuevoProducto() {
             const sku = `${prefix}-${String(mismaCat.length + 1).padStart(3, '0')}`;
 
             let nombreBaseSingular = categoria.toUpperCase();
-            if (categoria.toLowerCase() === "mochilas") nombreBaseSingular = "MOCHILA";
-            else if (categoria.toLowerCase() === "riñoneras") nombreBaseSingular = "RIÑONERA";
-            else if (categoria.toLowerCase() === "neceres" || categoria.toLowerCase() === "neceser") nombreBaseSingular = "NECESER";
-            else if (categoria.toLowerCase() === "relojes" || categoria.toLowerCase() === "reloj") nombreBaseSingular = "RELOJ";
-            else if (categoria.toLowerCase() === "cintos" || categoria.toLowerCase() === "cinto") nombreBaseSingular = "CINTO";
-            else if (categoria.toLowerCase() === "tote bags") nombreBaseSingular = "TOTE BAG";
+            const catLower = categoria.toLowerCase();
+            if (catLower === "mochilas") nombreBaseSingular = "MOCHILA";
+            else if (catLower === "riñoneras") nombreBaseSingular = "RIÑONERA";
+            else if (catLower === "neceres" || catLower === "neceser") nombreBaseSingular = "NECESER";
+            else if (catLower === "relojes" || catLower === "reloj") nombreBaseSingular = "RELOJ";
+            else if (catLower === "cintos" || catLower === "cinto") nombreBaseSingular = "CINTO";
+            else if (catLower === "tote bags") nombreBaseSingular = "TOTE BAG";
+            else if (catLower === "porta notebooks" || catLower === "porta notebook") nombreBaseSingular = "PORTA NOTEBOOK";
+            else if (catLower === "bolos" || catLower === "bolo") nombreBaseSingular = "BOLSO";
+            else if (catLower === "botineros" || catLower === "botinero") nombreBaseSingular = "BOTINERO";
             else {
-                // Si es otra categoría, quita la 's' final si la tiene
                 if (nombreBaseSingular.endsWith('S') && nombreBaseSingular.length > 3) {
                     nombreBaseSingular = nombreBaseSingular.slice(0, -1);
                 }
