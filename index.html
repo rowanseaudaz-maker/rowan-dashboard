@@ -38,7 +38,18 @@
             
             <!-- Columna Izquierda: Formulario -->
             <div class="lg:col-span-4 bg-zinc-900 border border-zinc-800 rounded-lg p-5 shadow-sm sticky top-20">
-                <h2 id="form-producto-titulo" class="text-sm font-bold uppercase text-zinc-300 mb-4">Cargar Producto de Proveedor</h2>
+                
+                <!-- Encabezado con Botón de Guardar Visible Arriba -->
+                <div class="flex flex-col gap-3 mb-4 pb-3 border-b border-zinc-800">
+                    <div class="flex justify-between items-center">
+                        <h2 id="form-producto-titulo" class="text-sm font-bold uppercase text-zinc-300">Cargar Producto</h2>
+                        <div class="flex gap-2">
+                            <button type="button" id="btn-cancelar-prod" onclick="cancelarEdicionProducto()" class="hidden bg-zinc-800 text-zinc-300 px-3 py-1.5 rounded text-xs font-medium hover:bg-zinc-700 transition">Cancelar</button>
+                            <button type="button" onclick="document.getElementById('productForm').requestSubmit()" id="btn-guardar-prod" class="bg-emerald-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-emerald-500 transition shadow">Guardar / Generar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <form id="productForm" class="space-y-4">
                     <input type="hidden" id="prod_edit_id">
 
@@ -105,11 +116,6 @@
                     <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Colores Disponibles (Stock Independiente)</label>
                         <div id="coloresCheckboxesContainer" class="flex flex-wrap gap-3 bg-zinc-950 border border-zinc-800 p-3 rounded max-h-40 overflow-y-auto"></div>
-                    </div>
-
-                    <div class="flex justify-end gap-2 pt-2">
-                        <button type="button" id="btn-cancelar-prod" onclick="cancelarEdicionProducto()" class="hidden bg-zinc-800 text-zinc-300 px-4 py-2 rounded text-xs font-medium hover:bg-zinc-700 transition">Cancelar</button>
-                        <button type="submit" id="btn-guardar-prod" class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition">Generar Artículo Automático</button>
                     </div>
                 </form>
             </div>
