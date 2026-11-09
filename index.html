@@ -13,7 +13,7 @@
 
     <!-- Header / Barra Superior -->
     <header class="border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-50 backdrop-blur">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+        <div class="max-w-[96%] mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3">
                 <h1 class="font-bold text-lg tracking-wider text-emerald-400">ROWAN <span class="text-xs font-normal text-zinc-400">Gestión Integral</span></h1>
                 <span id="status" class="text-xs px-3 py-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-300">Cargando...</span>
@@ -31,14 +31,15 @@
     </header>
 
     <!-- Contenido Principal -->
-    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+    <main class="max-w-[96%] mx-auto px-2 py-6 flex-grow w-full">
 
-        <!-- SECCIÓN: PRODUCTOS / CATÁLOGO -->
-        <section id="seccion-productos" class="space-y-6">
-            <!-- Formulario de Producto -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-5 shadow-sm">
+        <!-- SECCIÓN: PRODUCTOS / CATÁLOGO (Diseño de 2 columnas) -->
+        <section id="seccion-productos" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Columna Izquierda: Formulario de Carga / Edición (Ocupa 4 columnas) -->
+            <div class="lg:col-span-4 bg-zinc-900 border border-zinc-800 rounded-lg p-5 shadow-sm sticky top-20">
                 <h2 id="form-producto-titulo" class="text-sm font-bold uppercase text-zinc-300 mb-4">Cargar Producto de Proveedor</h2>
-                <form id="productForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <form id="productForm" class="space-y-4">
                     <input type="hidden" id="prod_edit_id">
 
                     <div>
@@ -51,7 +52,7 @@
                         <select id="categoria_select" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none"></select>
                     </div>
 
-                    <div class="md:col-span-2">
+                    <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Descripción del Proveedor</label>
                         <input type="text" id="desc_proveedor" placeholder="Ej: Mochila urbana reforzada de cuerina" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
                     </div>
@@ -61,19 +62,19 @@
                         <select id="nombre_hombre_select" class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none"></select>
                     </div>
 
-                    <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Proveedor ($)</label>
-                        <input type="number" id="costo_prov" value="0" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Costo Packaging ($)</label>
-                        <input type="number" id="costo_pack" value="1000" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs uppercase text-zinc-400 mb-1">Costo de Envío ($)</label>
-                        <input type="number" id="costo_envio" value="0" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 focus:outline-none">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] uppercase text-zinc-400 mb-1">Costo Prov ($)</label>
+                            <input type="number" id="costo_prov" value="0" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs text-zinc-200 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase text-zinc-400 mb-1">Costo Pack ($)</label>
+                            <input type="number" id="costo_pack" value="1000" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs text-zinc-200 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] uppercase text-zinc-400 mb-1">Envío ($)</label>
+                            <input type="number" id="costo_envio" value="0" min="0" oninput="calcularPrecioAutomatico()" required class="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs text-zinc-200 focus:outline-none">
+                        </div>
                     </div>
 
                     <div>
@@ -81,22 +82,22 @@
                         <input type="number" id="precio_venta" value="0" min="0" oninput="verificarModoPrecio()" required class="w-full border rounded p-2 text-sm font-semibold focus:outline-none bg-amber-950/40 text-amber-300 border-amber-600">
                     </div>
 
-                    <div class="md:col-span-4">
+                    <div>
                         <label class="block text-xs uppercase text-zinc-400 mb-1">Colores Disponibles (Stock Independiente)</label>
-                        <div id="coloresCheckboxesContainer" class="flex flex-wrap gap-4 bg-zinc-950 border border-zinc-800 p-3 rounded">
+                        <div id="coloresCheckboxesContainer" class="flex flex-wrap gap-3 bg-zinc-950 border border-zinc-800 p-3 rounded max-h-40 overflow-y-auto">
                             <!-- Se generan dinámicamente -->
                         </div>
                     </div>
 
-                    <div class="md:col-span-4 flex justify-end gap-2 pt-2">
+                    <div class="flex justify-end gap-2 pt-2">
                         <button type="button" id="btn-cancelar-prod" onclick="cancelarEdicionProducto()" class="hidden bg-zinc-800 text-zinc-300 px-4 py-2 rounded text-xs font-medium hover:bg-zinc-700 transition">Cancelar</button>
-                        <button type="submit" id="btn-guardar-prod" class="bg-emerald-600 text-white px-6 py-2 rounded text-xs font-semibold hover:bg-emerald-500 transition">Generar Artículo Automático</button>
+                        <button type="submit" id="btn-guardar-prod" class="w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition">Generar Artículo Automático</button>
                     </div>
                 </form>
             </div>
 
-            <!-- Listado del Catálogo -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-lg p-5 shadow-sm">
+            <!-- Columna Derecha: Listado del Catálogo (Ocupa 8 columnas) -->
+            <div class="lg:col-span-8 bg-zinc-900 border border-zinc-800 rounded-lg p-5 shadow-sm">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                     <h2 class="text-sm font-bold uppercase text-zinc-300">Catálogo de Artículos</h2>
                     <input type="text" id="buscadorProductos" oninput="filtrarProductos()" placeholder="Buscar por SKU, nombre..." class="bg-zinc-950 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200 focus:outline-none w-full md:w-72">
@@ -120,6 +121,7 @@
                     </table>
                 </div>
             </div>
+
         </section>
 
         <!-- SECCIÓN: COMPRAS -->
