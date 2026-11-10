@@ -11,7 +11,8 @@ function inicializarSistema() {
             { id: '6', nombre: 'Tote Bags' },
             { id: '7', nombre: 'Porta Notebooks' },
             { id: '8', nombre: 'Bolos' },
-            { id: '9', nombre: 'Botineros' }
+            { id: '9', nombre: 'Botineros' },
+            { id: '10', nombre: 'Billeteras' }
         ]));
     }
     if (!localStorage.getItem('rowan_proveedores')) {
@@ -25,12 +26,12 @@ function inicializarSistema() {
     }
     if (!localStorage.getItem('rowan_nombres')) {
         localStorage.setItem('rowan_nombres', JSON.stringify([
-            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN", "EDWARD", "THEODORE", "JAMES", "WILLIAM", "ARTHUR", "HENRY", "OLIVER", "BENJAMIN", "CHARLES", "ELLIOT", "OWEN"
+            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN", "EDWARD", "THEODORE", "JAMES", "WILLIAM", "ARTHUR", "HENRY", "OLIVER", "BENJAMIN", "CHARLES", "ELLIOT", "OWEN", "MARTIN", "PATRICK", "WESLEY", "SPENCER", "HARRISON", "LOUIS", "OSCAR", "FELIX", "JASPER"
         ]));
     }
     if (!localStorage.getItem('rowan_colores')) {
         localStorage.setItem('rowan_colores', JSON.stringify([
-            "Negro", "Marrón", "Plateado", "Dorado", "Azul", "Gris", "Verde", "Blanco", "Rojo", "Camel"
+            "Negro", "Marrón", "Plateado", "Dorado", "Azul", "Gris", "Verde", "Blanco", "Rojo", "Camel", "Marrón Claro", "Marrón Oscuro", "Bordo"
         ]));
     }
 
@@ -988,6 +989,7 @@ function procesarNuevoProducto() {
         else if (catLower === "porta notebooks" || catLower === "porta notebook") nombreBaseSingular = "PORTA NOTEBOOK";
         else if (catLower === "bolos" || catLower === "bolo") nombreBaseSingular = "BOLSO";
         else if (catLower === "botineros" || catLower === "botinero") nombreBaseSingular = "BOTINERO";
+        else if (catLower === "billeteras" || catLower === "billetera") nombreBaseSingular = "BILLETERA";
         else {
             if (nombreBaseSingular.endsWith('S') && nombreBaseSingular.length > 3) {
                 nombreBaseSingular = nombreBaseSingular.slice(0, -1);
@@ -997,7 +999,6 @@ function procesarNuevoProducto() {
         if (editId) {
             const prod = productos.find(p => p.id === editId);
             if (prod) {
-                // Mantener el nombre personalizado existente o extraerlo si cambia la categoría
                 let partesNombreViejo = prod.nombre_rowan ? prod.nombre_rowan.trim().split(/\s+/) : [];
                 let segundoNombre = partesNombreViejo.length > 1 ? partesNombreViejo.slice(1).join(' ') : (nombreManualSeleccionado || "ROWAN");
                 if (nombreManualSeleccionado) segundoNombre = nombreManualSeleccionado;
@@ -1108,18 +1109,10 @@ window.editarProducto = function(id) {
             const btnGuardar = document.getElementById("btn-guardar-prod");
             if (btnGuardar) {
                 btnGuardar.textContent = "Guardar Cambios";
-                btnGuardar.className = "w-full bg-amber-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-amber-500 transition";
+                btnGuardar.className = "bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-amber-500 transition shadow";
             }
-            const btnGuardarTop = document.getElementById("btn-guardar-prod-top");
-            if (btnGuardarTop) {
-                btnGuardarTop.textContent = "Guardar Cambios";
-                btnGuardarTop.className = "w-full bg-amber-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-amber-500 transition";
-            }
-
             const btnCancelar = document.getElementById("btn-cancelar-prod");
             if (btnCancelar) btnCancelar.classList.remove("hidden");
-            const btnCancelarTop = document.getElementById("btn-cancelar-prod-top");
-            if (btnCancelarTop) btnCancelarTop.classList.remove("hidden");
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -1131,23 +1124,16 @@ window.editarProducto = function(id) {
 window.cancelarEdicionProducto = function() {
     document.getElementById("productForm").reset();
     document.getElementById("prod_edit_id").value = "";
-    document.getElementById("form-producto-titulo").textContent = "Cargar Producto de Proveedor";
+    document.getElementById("form-producto-titulo").textContent = "Cargar Producto";
     
     const btnGuardar = document.getElementById("btn-guardar-prod");
     if (btnGuardar) {
-        btnGuardar.textContent = "Generar Artículo Automático";
-        btnGuardar.className = "w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition";
-    }
-    const btnGuardarTop = document.getElementById("btn-guardar-prod-top");
-    if (btnGuardarTop) {
-        btnGuardarTop.textContent = "Generar Artículo Automático";
-        btnGuardarTop.className = "w-full bg-emerald-600 text-white px-4 py-2.5 rounded text-xs font-semibold hover:bg-emerald-500 transition";
+        btnGuardar.textContent = "Guardar / Generar";
+        btnGuardar.className = "bg-emerald-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-emerald-500 transition shadow";
     }
     
     const btnCancelar = document.getElementById("btn-cancelar-prod");
     if (btnCancelar) btnCancelar.classList.add("hidden");
-    const btnCancelarTop = document.getElementById("btn-cancelar-prod-top");
-    if (btnCancelarTop) btnCancelarTop.classList.add("hidden");
 
     document.getElementById("costo_pack").value = "1000";
     document.getElementById("costo_envio").value = "0";
@@ -1231,13 +1217,21 @@ function cargarProductos() {
     
     try {
         const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+        const proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
+
+        // Mapear nombre del proveedor por ID para búsqueda y visualización
+        const provMap = new Map();
+        proveedores.forEach(p => provMap.set(p.id, p.nombre));
 
         const productosFiltrados = productos.filter(p => {
             const matchNombre = (p.nombre_rowan || '').toLowerCase().includes(filtro);
             const matchDescProv = (p.descripcion_proveedor || '').toLowerCase().includes(filtro);
             const matchSku = (p.sku || '').toLowerCase().includes(filtro);
-            return matchNombre || matchDescProv || matchSku;
+            const nombreProv = (provMap.get(p.proveedor_id) || '').toLowerCase();
+            const matchProv = nombreProv.includes(filtro);
+
+            return matchNombre || matchDescProv || matchSku || matchProv;
         });
 
         if (productosFiltrados.length === 0) {
@@ -1249,6 +1243,7 @@ function cargarProductos() {
         productosFiltrados.forEach(p => {
             const costoReal = (p.costo_proveedor || 0) + (p.costo_packaging || 0) + (p.costo_envio || 0);
             const esVisible = p.visible !== false;
+            const nombreProveedor = provMap.get(p.proveedor_id) || 'Proveedor';
 
             // Verificar si el precio es automático o manual
             const precioAuto = (costoReal) * 2.2;
@@ -1271,7 +1266,14 @@ function cargarProductos() {
                     <tr class="hover:bg-zinc-800/50 transition">
                         <td class="py-3 text-center">${badgeVisibilidad}</td>
                         <td class="py-3 font-mono text-xs text-zinc-400">${skuUnico}</td>
-                        <td class="py-3 font-medium text-zinc-200">${p.nombre_rowan} <span class="text-xs text-emerald-400 font-semibold block">Color: ${colorItem}</span></td>
+                        <td class="py-3 font-medium text-zinc-200">
+                            <div>${p.nombre_rowan}</div>
+                            <div class="text-[11px] text-zinc-400 font-normal mt-0.5">${p.descripcion_proveedor || ''}</div>
+                            <div class="mt-1">
+                                <span class="inline-block bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-0.5 rounded-full font-medium">📦 ${nombreProveedor}</span>
+                                <span class="inline-block text-xs text-emerald-400 font-semibold ml-1">Color: ${colorItem}</span>
+                            </div>
+                        </td>
                         <td class="py-3 font-mono text-amber-400">
                             <input type="number" value="${stockColorVal}" min="0" onchange="actualizarStockColor('${p.id}', '${colorItem}', this.value)" class="w-20 bg-zinc-950 border border-zinc-700 rounded p-1 text-amber-400 font-semibold focus:outline-none">
                         </td>
