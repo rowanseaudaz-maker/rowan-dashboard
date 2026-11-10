@@ -26,7 +26,7 @@ function inicializarSistema() {
     }
     if (!localStorage.getItem('rowan_nombres')) {
         localStorage.setItem('rowan_nombres', JSON.stringify([
-            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN", "EDWARD", "THEODORE", "JAMES", "WILLIAM", "ARTHUR", "HENRY", "OLIVER", "BENJAMIN", "CHARLES", "ELLIOT", "OWEN", "MARTIN", "PATRICK", "WESLEY", "SPENCER", "HARRISON", "LOUIS", "OSCAR", "FELIX", "JASPER"
+            "DANTE", "ENZO", "BRUNO", "MILO", "IAN", "GAEL", "LUCA", "AXEL", "THIAGO", "SANTINO", "MILAN", "EDWARD", "THEODORE", "JAMES", "WILLIAM", "ARTHUR", "HENRY", "OLIVER", "BENJAMIN", "CHARLES", "ELLIOT", "OWEN", "MARTIN", "PATRICK", "WESLEY", "SPENCER", "HARRISON", "LOUIS", "OSCAR", "FELIX", "JASPER", "ISAAC", "CONNOR"
         ]));
     }
     if (!localStorage.getItem('rowan_colores')) {
@@ -1220,7 +1220,6 @@ function cargarProductos() {
         const proveedores = JSON.parse(localStorage.getItem('rowan_proveedores')) || [];
         const filtro = document.getElementById("buscadorProductos") ? document.getElementById("buscadorProductos").value.toLowerCase() : "";
 
-        // Mapear nombre del proveedor por ID para búsqueda y visualización
         const provMap = new Map();
         proveedores.forEach(p => provMap.set(p.id, p.nombre));
 
@@ -1245,7 +1244,6 @@ function cargarProductos() {
             const esVisible = p.visible !== false;
             const nombreProveedor = provMap.get(p.proveedor_id) || 'Proveedor';
 
-            // Verificar si el precio es automático o manual
             const precioAuto = (costoReal) * 2.2;
             const esAutomatico = Math.abs((p.precio_venta || 0) - precioAuto) < 1;
             const badgePrecio = esAutomatico 
@@ -1362,10 +1360,12 @@ function cargarProveedoresFicha() {
 
 // --- MÓDULO TIENDA NEGOCIO ---
 function obtenerDatosTiendanubeFormato() {
+    // Obtenemos los productos y usamos .slice().reverse() para ordenarlos del más viejo al más nuevo (orden de creación original)
     const productos = JSON.parse(localStorage.getItem('rowan_productos')) || [];
+    const productosOrdenados = [...productos].reverse();
     let filasTiendanube = [];
 
-    productos.forEach(p => {
+    productosOrdenados.forEach(p => {
         const visibilidadText = (p.visible !== false) ? "Visible" : "Oculto";
         let coloresList = [];
         if (p.color) {
